@@ -1,0 +1,13 @@
+# Binary
+lucyfmt
+lucyfmt.exe
+
+# Odin build artifacts
+*.o
+*.obj
+*.pdb
+*.dSYM/
+
+# OS
+.DS_Store
+Thumbs.db
