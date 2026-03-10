@@ -183,7 +183,7 @@ main :: proc() {
 			fmt.sbprintln(&sb,"  expected: ", tc.expected)
 			fmt.sbprintln(&sb,"  instead, we got: ", result)
 			
-			fmt.eprintln(strings.to_string(sb))
+			log.error(strings.to_string(sb))
 			
 			testing.fail(t)
 		}
