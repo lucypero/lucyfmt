@@ -189,11 +189,7 @@ format_source :: proc(input: string) -> string {
 			strings.write_byte(&builder, '\t')
 		}
 
-		if is_comment {
-			strings.write_string(&builder, line)
-		} else {
-			strings.write_string(&builder, stripped)
-		}
+		strings.write_string(&builder, stripped)
 		strings.write_byte(&builder, '\n')
 	}
 
