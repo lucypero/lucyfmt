@@ -158,9 +158,9 @@ import "core:fmt"
 main :: proc() {
 
 	// comment here
-					
+
 	a: int
-				
+
 	fmt.printfln("%v %v %v",
 		a,
 		3,
