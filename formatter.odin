@@ -1,5 +1,6 @@
 package lucyfmt
 
+import "core:fmt"
 import "core:strings"
 
 Parser_State :: struct {
@@ -127,10 +128,8 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 format_source :: proc(input: string) -> string {
 	// Normalize \r\n to \n
 	normalized, was_alloc := strings.replace_all(input, "\r\n", "\n")
-	defer if was_alloc do delete(normalized)
 
 	lines := strings.split(normalized, "\n")
-	defer delete(lines)
 
 	state := Parser_State{}
 	builder: strings.Builder

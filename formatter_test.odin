@@ -117,7 +117,6 @@ test_crlf_normalization :: proc(t: ^testing.T) {
 	input := "main :: proc() {\r\nx := 1\r\n}\r\n"
 	expected := "main :: proc() {\n\tx := 1\n}\n"
 	result := format_source(input)
-	defer delete(result)
 
 	if result != expected {
 		fmt.printfln("FAIL: crlf normalization")

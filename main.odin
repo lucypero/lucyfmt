@@ -21,16 +21,19 @@ main :: proc() {
 	read_from_stdin := len(file_path) == 0
 
 	if read_from_stdin {
-		buf: [dynamic]u8
-		defer delete(buf)
+		buf:= make([dynamic]u8)
 		tmp: [4096]u8
 		for {
 			n, err := os.read(os.stdin, tmp[:])
 			if n > 0 {
 				append(&buf, ..tmp[:n])
 			}
-			if err != nil {
+			else if n == 0 {
 				break
+			}
+			else if err != nil {
+				fmt.eprintfln("error reading stdin %v", err)
+				os.exit(1)
 			}
 		}
 		input = string(buf[:])
