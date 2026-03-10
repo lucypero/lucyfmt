@@ -7,11 +7,14 @@ Parser_State :: struct {
 	indent_level:        int,
 	multi_comment_depth: int,
 	in_raw_string:       bool,
+	paren_depth:          int,
 }
 
 Scan_Result :: struct {
-	leading_close: bool,
-	net_change:    int,
+	leading_close:     bool,
+	net_change:       int,
+	paren_change:     int,
+	leading_close_paren: bool,
 }
 
 scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
@@ -100,20 +103,35 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 			continue
 		}
 
-		// Braces
-		if ch == '{' {
-			result.net_change += 1
-			i += 1
-			continue
+	// Braces
+	if ch == '{' {
+		result.net_change += 1
+		i += 1
+		continue
+	}
+	if ch == '}' {
+		if !found_first_non_ws && ch != ' ' && ch != '\t' {
+			result.leading_close = true
 		}
-		if ch == '}' {
-			if !found_first_non_ws && ch != ' ' && ch != '\t' {
-				result.leading_close = true
-			}
-			result.net_change -= 1
-			i += 1
-			continue
+		result.net_change -= 1
+		i += 1
+		continue
+	}
+
+	// Parentheses
+	if ch == '(' {
+		result.paren_change += 1
+		i += 1
+		continue
+	}
+	if ch == ')' {
+		if !found_first_non_ws && ch != ' ' && ch != '\t' {
+			result.leading_close_paren = true
 		}
+		result.paren_change -= 1
+		i += 1
+		continue
+	}
 
 		if !found_first_non_ws && ch != ' ' && ch != '\t' {
 			found_first_non_ws = true
@@ -148,6 +166,8 @@ format_source :: proc(input: string) -> string {
 			continue
 		}
 
+		is_comment := state.multi_comment_depth > 0 || strings.has_prefix(stripped, "//")
+
 		result := scan_line(stripped, &state)
 
 		write_indent: int
@@ -156,14 +176,25 @@ format_source :: proc(input: string) -> string {
 		} else {
 			write_indent = state.indent_level
 		}
+		if result.leading_close_paren {
+			write_indent = max(0, write_indent + state.paren_depth - 1)
+		} else {
+			write_indent += state.paren_depth
+		}
+
+		state.indent_level = max(0, state.indent_level + result.net_change)
+		state.paren_depth = max(0, state.paren_depth + result.paren_change)
 
 		for _ in 0 ..< write_indent {
 			strings.write_byte(&builder, '\t')
 		}
-		strings.write_string(&builder, stripped)
-		strings.write_byte(&builder, '\n')
 
-		state.indent_level = max(0, state.indent_level + result.net_change)
+		if is_comment {
+			strings.write_string(&builder, line)
+		} else {
+			strings.write_string(&builder, stripped)
+		}
+		strings.write_byte(&builder, '\n')
 	}
 
 	result := strings.to_string(builder)

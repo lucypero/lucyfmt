@@ -96,6 +96,36 @@ test_format :: proc(t: ^testing.T) {
 			input    = "x := `hello {\nworld }\n`\nif true {\ny := 1\n}\n",
 			expected = "x := `hello {\nworld }\n`\nif true {\n\ty := 1\n}\n",
 		},
+		// 15. Single-line comment preserved
+		{
+			name     = "single-line comment preserved",
+			input    = "//   custom comment\nif true {\nx := 1\n}\n",
+			expected = "//   custom comment\nif true {\n\tx := 1\n}\n",
+		},
+		// 16. Multi-line comment preserved
+		{
+			name     = "multi-line comment preserved",
+			input    = "/* multi\nline comment */\nif true {\nx := 1\n}\n",
+			expected = "/* multi\nline comment */\nif true {\n\tx := 1\n}\n",
+		},
+		// 17. Paren indentation
+		{
+			name     = "paren indentation",
+			input    = "foo(\nbar,\nbaz\n)\n",
+			expected = "foo(\n\tbar,\n\tbaz\n)\n",
+		},
+		// 18. Nested paren indentation
+		{
+			name     = "nested paren indentation",
+			input    = "foo(\nbar,\nbaz(\nqux\n)\n)\n",
+			expected = "foo(\n\tbar,\n\tbaz(\n\t\tqux\n\t)\n)\n",
+		},
+		// 19. Paren + brace indentation
+		{
+			name     = "paren and brace indentation",
+			input    = "main :: proc() {\nfoo(\nbar\n)\n}\n",
+			expected = "main :: proc() {\n\tfoo(\n\t\tbar\n\t)\n}\n",
+		},
 	}
 
 	for tc in cases {
