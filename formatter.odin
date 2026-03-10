@@ -152,6 +152,9 @@ format_source :: proc(input: string) -> string {
 	state := Parser_State{}
 	builder: strings.Builder
 	strings.builder_init(&builder, 0, len(input))
+	
+	previous_line : Scan_Result
+	previous_state : Parser_State
 
 	for line, line_idx in lines {
 		// Don't add trailing newline for last empty element from split
@@ -167,7 +170,7 @@ format_source :: proc(input: string) -> string {
 		}
 
 		is_comment := state.multi_comment_depth > 0 || strings.has_prefix(stripped, "//")
-
+		
 		result := scan_line(stripped, &state)
 
 		write_indent: int
@@ -185,12 +188,28 @@ format_source :: proc(input: string) -> string {
 		state.indent_level = max(0, state.indent_level + result.net_change)
 		state.paren_depth = max(0, state.paren_depth + result.paren_change)
 
-		for _ in 0 ..< write_indent {
-			strings.write_byte(&builder, '\t')
+		did_untouched_thing_start : bool = (state.in_raw_string && !previous_state.in_raw_string) ||
+			(state.multi_comment_depth > 0 && previous_state.multi_comment_depth <= 0)
+		
+		// leave the inside of multi comments untouched. and multi strings
+		if !did_untouched_thing_start && (state.in_raw_string || state.multi_comment_depth > 0) {
+			strings.write_string(&builder, line)
+		} else {
+			
+			// add back indentation
+			for _ in 0 ..< write_indent {
+				strings.write_byte(&builder, '\t')
+			}
+			
+			// write line stripped of whitespace
+			strings.write_string(&builder, stripped)
 		}
+		
 
-		strings.write_string(&builder, stripped)
 		strings.write_byte(&builder, '\n')
+		
+		previous_state = state
+		previous_line = result
 	}
 
 	result := strings.to_string(builder)

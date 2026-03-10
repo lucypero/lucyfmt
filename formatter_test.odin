@@ -169,6 +169,39 @@ main :: proc() {
 }
 `
 		},
+		{
+			name     = "multi line tests",
+			input    = `
+
+package main
+
+import "core:fmt"
+
+main :: proc() {
+
+		hello :=  ` + "`" + `lala
+hello hello
+` + "`" + `
+
+
+}
+`,
+			expected = `
+
+package main
+
+import "core:fmt"
+
+main :: proc() {
+
+	hello :=  ` + "`" + `lala
+hello hello
+` + "`" + `
+
+
+}
+`,
+		},
 	}
 
 	for tc in cases {
