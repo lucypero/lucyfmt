@@ -1,7 +1,9 @@
 package lucyfmt
 
+import "core:strings"
 import "core:testing"
 import "core:fmt"
+import "core:log"
 
 Test_Case :: struct {
 	name:     string,
@@ -126,6 +128,47 @@ test_format :: proc(t: ^testing.T) {
 			input    = "main :: proc() {\nfoo(\nbar\n)\n}\n",
 			expected = "main :: proc() {\n\tfoo(\n\t\tbar\n\t)\n}\n",
 		},
+		{
+			name     = "paren and brace indentation - advanced",
+			input    = `
+
+package main
+
+import "core:fmt"
+
+main :: proc() {
+
+		// comment here
+		
+	a: int
+	
+	fmt.printfln("%v %v %v",
+	a,
+	3,
+	5
+	)
+}
+`,
+			expected = `
+
+package main
+
+import "core:fmt"
+
+main :: proc() {
+
+	// comment here
+					
+	a: int
+				
+	fmt.printfln("%v %v %v",
+		a,
+		3,
+		5
+	)
+}
+`
+		},
 	}
 
 	for tc in cases {
@@ -133,10 +176,15 @@ test_format :: proc(t: ^testing.T) {
 		defer delete(result)
 
 		if result != tc.expected {
-			fmt.printfln("FAIL: %s", tc.name)
-			fmt.printfln("  input:    %q", tc.input)
-			fmt.printfln("  expected: %q", tc.expected)
-			fmt.printfln("  got:      %q", result)
+			sb := strings.builder_make_none()
+			
+			fmt.sbprintln(&sb,"FAIL: ", tc.name)
+			fmt.sbprintln(&sb,"  input:    ", tc.input)
+			fmt.sbprintln(&sb,"  expected: ", tc.expected)
+			fmt.sbprintln(&sb,"  instead, we got: ", result)
+			
+			fmt.eprintln(strings.to_string(sb))
+			
 			testing.fail(t)
 		}
 	}
