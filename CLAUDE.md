@@ -1,0 +1,2 @@
+- never FREE (free/delete) memory.
+- always make() dynamic arrays.
