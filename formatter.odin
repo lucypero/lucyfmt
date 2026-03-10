@@ -187,15 +187,17 @@ format_source :: proc(input: string) -> string {
 
 		state.indent_level = max(0, state.indent_level + result.net_change)
 		state.paren_depth = max(0, state.paren_depth + result.paren_change)
-
-		did_untouched_thing_start : bool = (state.in_raw_string && !previous_state.in_raw_string) ||
-			(state.multi_comment_depth > 0 && previous_state.multi_comment_depth <= 0)
 		
-		// leave the inside of multi comments untouched. and multi strings
-		if !did_untouched_thing_start && (state.in_raw_string || state.multi_comment_depth > 0) {
+		// DNT: Do not touch (inside of multi line strings and multi line comments)
+		did_dnt_start : bool = (state.in_raw_string && !previous_state.in_raw_string) ||
+			(state.multi_comment_depth > 0 && previous_state.multi_comment_depth <= 0)
+			
+		was_dnt_previous_line : bool = (previous_state.in_raw_string) || previous_state.multi_comment_depth > 0
+		
+		// leave the inside of dnt's untouched, even if the dnt ended in current line
+		if (!did_dnt_start && (state.in_raw_string || state.multi_comment_depth > 0)) || was_dnt_previous_line {
 			strings.write_string(&builder, line)
 		} else {
-			
 			// add back indentation
 			for _ in 0 ..< write_indent {
 				strings.write_byte(&builder, '\t')
@@ -205,7 +207,6 @@ format_source :: proc(input: string) -> string {
 			strings.write_string(&builder, stripped)
 		}
 		
-
 		strings.write_byte(&builder, '\n')
 		
 		previous_state = state
