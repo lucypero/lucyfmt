@@ -8,6 +8,7 @@ Parser_State :: struct {
 	multi_comment_depth: int,
 	in_raw_string:       bool,
 	paren_depth:          int,
+	when_detected: bool
 }
 
 Scan_Result :: struct {
@@ -24,6 +25,10 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 
 	for i < len(line) {
 		ch := line[i]
+		
+		if strings.starts_with(line[i:], "when") {
+			state.when_detected = true
+		}
 
 		// Inside a raw string — look for closing backtick
 		if state.in_raw_string {
@@ -105,7 +110,15 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 
 	// Braces
 	if ch == '{' {
-		result.net_change += 1
+		
+		if state.when_detected {
+			
+			state.when_detected = false
+		} else {
+			result.net_change += 1
+		}
+		
+		
 		i += 1
 		continue
 	}
