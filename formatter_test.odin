@@ -215,7 +215,8 @@ alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
 
 when ODIN_DEBUG {
 lprintln("Tracking Allocations...")
-}`
+}
+`
 		}
 	}
 
@@ -227,9 +228,9 @@ lprintln("Tracking Allocations...")
 			sb := strings.builder_make_none()
 			
 			fmt.sbprintln(&sb,"FAIL: ", tc.name)
-			fmt.sbprintln(&sb,"  input:    ", tc.input)
-			fmt.sbprintln(&sb,"  expected: ", tc.expected)
-			fmt.sbprintln(&sb,"  instead, we got: ", result)
+			fmt.sbprintln(&sb,"=====   Input:    ", tc.input)
+			fmt.sbprintln(&sb,"=====   Expected: ", tc.expected)
+			fmt.sbprintln(&sb,"=====   Test output: ", result)
 			
 			log.error(strings.to_string(sb))
 			
