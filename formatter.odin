@@ -7,7 +7,6 @@ Parser_State :: struct {
 	multi_comment_depth: int,
 	in_raw_string:       bool,
 	paren_depth:          int,
-	when_detected: bool
 }
 
 Scan_Result :: struct {
@@ -24,10 +23,6 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 
 	for i < len(line) {
 		ch := line[i]
-		
-		if strings.starts_with(line[i:], "when") {
-			state.when_detected = true
-		}
 
 		// Inside a raw string — look for closing backtick
 		if state.in_raw_string {
@@ -107,43 +102,36 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 			continue
 		}
 
-	// Braces
-	if ch == '{' {
-		
-		if state.when_detected {
-			
-			state.when_detected = false
-		} else {
+		// Braces
+		if ch == '{' {
 			result.net_change += 1
-		}
-		
-		
-		i += 1
-		continue
-	}
-	if ch == '}' {
-		if !found_first_non_ws && ch != ' ' && ch != '\t' {
-			result.leading_close = true
-		}
-		result.net_change -= 1
-		i += 1
-		continue
-	}
 
-	// Parentheses
-	if ch == '(' {
-		result.paren_change += 1
-		i += 1
-		continue
-	}
-	if ch == ')' {
-		if !found_first_non_ws && ch != ' ' && ch != '\t' {
-			result.leading_close_paren = true
+			i += 1
+			continue
 		}
-		result.paren_change -= 1
-		i += 1
-		continue
-	}
+		if ch == '}' {
+			if !found_first_non_ws && ch != ' ' && ch != '\t' {
+				result.leading_close = true
+			}
+			result.net_change -= 1
+			i += 1
+			continue
+		}
+
+		// Parentheses
+		if ch == '(' {
+			result.paren_change += 1
+			i += 1
+			continue
+		}
+		if ch == ')' {
+			if !found_first_non_ws && ch != ' ' && ch != '\t' {
+				result.leading_close_paren = true
+			}
+			result.paren_change -= 1
+			i += 1
+			continue
+		}
 
 		if !found_first_non_ws && ch != ' ' && ch != '\t' {
 			found_first_non_ws = true
@@ -164,7 +152,7 @@ format_source :: proc(input: string) -> string {
 	state := Parser_State{}
 	builder: strings.Builder
 	strings.builder_init(&builder, 0, len(input))
-	
+
 	previous_line : Scan_Result
 	previous_state : Parser_State
 
@@ -182,13 +170,13 @@ format_source :: proc(input: string) -> string {
 		}
 
 		result := scan_line(stripped, &state)
-		
+
 		// DNT: Do not touch (inside of multi line strings and multi line comments)
 		did_dnt_start : bool = (state.in_raw_string && !previous_state.in_raw_string) ||
-			(state.multi_comment_depth > 0 && previous_state.multi_comment_depth <= 0)
-			
+		(state.multi_comment_depth > 0 && previous_state.multi_comment_depth <= 0)
+
 		was_dnt_previous_line : bool = (previous_state.in_raw_string) || previous_state.multi_comment_depth > 0
-		
+
 		// leave the inside of dnt's untouched, even if the dnt ended in current line
 		if (!did_dnt_start && (state.in_raw_string || state.multi_comment_depth > 0)) || was_dnt_previous_line {
 			// Leave the line as is.
@@ -205,25 +193,25 @@ format_source :: proc(input: string) -> string {
 			} else {
 				write_indent += state.paren_depth
 			}
-			
+
 			if strings.starts_with(stripped, "case") {
 				write_indent -= 1
 			}
-			
+
 			// add back indentation
 			for _ in 0 ..< write_indent {
 				strings.write_byte(&builder, '\t')
 			}
-			
+
 			// write line stripped of whitespace
 			strings.write_string(&builder, stripped)
 		}
-		
+
 		state.indent_level = max(0, state.indent_level + result.net_change)
 		state.paren_depth = max(0, state.paren_depth + result.paren_change)
-		
+
 		strings.write_byte(&builder, '\n')
-		
+
 		previous_state = state
 		previous_line = result
 	}

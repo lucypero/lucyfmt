@@ -205,16 +205,27 @@ hello hello
 		{
 			name = "when",
 			input = `
-alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
 
-when ODIN_DEBUG {
-	lprintln("Tracking Allocations...")
-}`,
+lala :: proc() {
+	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
+	
+	when ODIN_DEBUG {
+		lprintln("Tracking Allocations...")
+	}
+	
+	apple := "table"
+}
+`,
 			expected = `
-alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
 
-when ODIN_DEBUG {
-lprintln("Tracking Allocations...")
+lala :: proc() {
+	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
+	
+	when ODIN_DEBUG {
+	lprintln("Tracking Allocations...")
+	}
+	
+	apple := "table"
 }
 `
 		},
