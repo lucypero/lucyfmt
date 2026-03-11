@@ -1,6 +1,5 @@
 package lucyfmt
 
-import "core:fmt"
 import "core:strings"
 
 Parser_State :: struct {
@@ -182,28 +181,7 @@ format_source :: proc(input: string) -> string {
 			continue
 		}
 
-		is_comment := state.multi_comment_depth > 0 || strings.has_prefix(stripped, "//")
-		
 		result := scan_line(stripped, &state)
-
-		write_indent: int
-		if result.leading_close {
-			write_indent = max(0, state.indent_level - 1)
-		} else {
-			write_indent = state.indent_level
-		}
-		if result.leading_close_paren {
-			write_indent = max(0, write_indent + state.paren_depth - 1)
-		} else {
-			write_indent += state.paren_depth
-		}
-		
-		if strings.starts_with(stripped, "case") {
-			write_indent -= 1
-		}
-
-		state.indent_level = max(0, state.indent_level + result.net_change)
-		state.paren_depth = max(0, state.paren_depth + result.paren_change)
 		
 		// DNT: Do not touch (inside of multi line strings and multi line comments)
 		did_dnt_start : bool = (state.in_raw_string && !previous_state.in_raw_string) ||
@@ -213,8 +191,25 @@ format_source :: proc(input: string) -> string {
 		
 		// leave the inside of dnt's untouched, even if the dnt ended in current line
 		if (!did_dnt_start && (state.in_raw_string || state.multi_comment_depth > 0)) || was_dnt_previous_line {
+			// Leave the line as is.
 			strings.write_string(&builder, line)
-		} else {
+		} else { // Add indentation as appropriate
+			write_indent: int
+			if result.leading_close {
+				write_indent = max(0, state.indent_level - 1)
+			} else {
+				write_indent = state.indent_level
+			}
+			if result.leading_close_paren {
+				write_indent = max(0, write_indent + state.paren_depth - 1)
+			} else {
+				write_indent += state.paren_depth
+			}
+			
+			if strings.starts_with(stripped, "case") {
+				write_indent -= 1
+			}
+			
 			// add back indentation
 			for _ in 0 ..< write_indent {
 				strings.write_byte(&builder, '\t')
@@ -224,6 +219,9 @@ format_source :: proc(input: string) -> string {
 			strings.write_string(&builder, stripped)
 		}
 		
+		state.indent_level = max(0, state.indent_level + result.net_change)
+		state.paren_depth = max(0, state.paren_depth + result.paren_change)
+		
 		strings.write_byte(&builder, '\n')
 		
 		previous_state = state
@@ -232,6 +230,5 @@ format_source :: proc(input: string) -> string {
 
 	result := strings.to_string(builder)
 	output := strings.clone(result)
-	strings.builder_destroy(&builder)
 	return output
 }
