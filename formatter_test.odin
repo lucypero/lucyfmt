@@ -217,7 +217,36 @@ when ODIN_DEBUG {
 lprintln("Tracking Allocations...")
 }
 `
-		}
+		},
+		{
+			name = "switch statement",
+			input = `
+			
+imgui_impl_sdl2.ProcessEvent(&e)
+
+#partial switch e.type {
+	case .QUIT:
+	break main_loop
+	case .WINDOWEVENT:
+	if e.window.event == .CLOSE {
+		break main_loop
+	}
+}`,
+			expected = `
+
+imgui_impl_sdl2.ProcessEvent(&e)
+
+#partial switch e.type {
+case .QUIT:
+	break main_loop
+case .WINDOWEVENT:
+	if e.window.event == .CLOSE {
+		break main_loop
+	}
+}
+`
+		},
+		
 	}
 
 	for tc in cases {

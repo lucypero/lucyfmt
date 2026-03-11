@@ -197,6 +197,10 @@ format_source :: proc(input: string) -> string {
 		} else {
 			write_indent += state.paren_depth
 		}
+		
+		if strings.starts_with(stripped, "case") {
+			write_indent -= 1
+		}
 
 		state.indent_level = max(0, state.indent_level + result.net_change)
 		state.paren_depth = max(0, state.paren_depth + result.paren_change)
