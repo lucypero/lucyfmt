@@ -220,11 +220,11 @@ lala :: proc() {
 
 lala :: proc() {
 	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
-	
+
 	when ODIN_DEBUG {
-	lprintln("Tracking Allocations...")
+		lprintln("Tracking Allocations...")
 	}
-	
+
 	apple := "table"
 }
 `
@@ -233,27 +233,38 @@ lala :: proc() {
 			name = "switch statement",
 			input = `
 			
-imgui_impl_sdl2.ProcessEvent(&e)
+lala :: proc() {
 
-#partial switch e.type {
-	case .QUIT:
-	break main_loop
-	case .WINDOWEVENT:
-	if e.window.event == .CLOSE {
+	imgui_impl_sdl2.ProcessEvent(&e)
+	
+	#partial switch e.type {
+		case .QUIT:
 		break main_loop
+		case .WINDOWEVENT:
+			if e.window.event == .CLOSE {
+				break main_loop
+			}
 	}
-}`,
+	
+	lala := 1
+}
+`,
 			expected = `
 
-imgui_impl_sdl2.ProcessEvent(&e)
+lala :: proc() {
 
-#partial switch e.type {
-case .QUIT:
-	break main_loop
-case .WINDOWEVENT:
-	if e.window.event == .CLOSE {
+	imgui_impl_sdl2.ProcessEvent(&e)
+
+	#partial switch e.type {
+	case .QUIT:
 		break main_loop
+	case .WINDOWEVENT:
+		if e.window.event == .CLOSE {
+			break main_loop
+		}
 	}
+
+	lala := 1
 }
 `
 		},
@@ -266,11 +277,12 @@ case .WINDOWEVENT:
 
 		if result != tc.expected {
 			sb := strings.builder_make_none()
+			defer strings.builder_destroy(&sb)
 			
 			fmt.sbprintln(&sb,"FAIL: ", tc.name)
-			fmt.sbprintln(&sb,"=====   Input:    ", tc.input)
-			fmt.sbprintln(&sb,"=====   Expected: ", tc.expected)
-			fmt.sbprintln(&sb,"=====   Test output: ", result)
+			fmt.sbprintln(&sb,"=====   Input:    ", make_whitespace_visible(tc.input))
+			fmt.sbprintln(&sb,"=====   Expected: ", make_whitespace_visible(tc.expected))
+			fmt.sbprintln(&sb,"=====   Test output: ", make_whitespace_visible(result))
 			
 			log.error(strings.to_string(sb))
 			
@@ -291,4 +303,33 @@ test_crlf_normalization :: proc(t: ^testing.T) {
 		fmt.printfln("  got:      %q", result)
 		testing.fail(t)
 	}
+}
+
+make_whitespace_visible :: proc(str: string) -> string {
+	
+	str := str
+	did_allocate: bool
+	
+	sb := strings.builder_make_none()
+	strings.write_string(&sb, str)
+	
+	lines, err := strings.split_lines(str)
+	
+	strings.builder_replace_all(&sb, "\t", "[TAB]")
+	
+	for line in lines {
+		// TODO:  make leading whitespace visible
+		strings.starts_with(line, " ")
+		
+		
+		
+		// TODO: make trailing whitespace visible
+	}
+	
+	strings.write_string(&sb, "[END]")
+	
+	
+	// str, did_allocate = strings.replace_all(str, " ", "[TAB]")
+	
+	return strings.to_string(sb)
 }
