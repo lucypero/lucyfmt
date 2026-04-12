@@ -129,6 +129,49 @@ test_format :: proc(t: ^testing.T) {
 			expected = "main :: proc() {\n\tfoo(\n\t\tbar\n\t)\n}\n",
 		},
 		{
+			name     = "multiple parens and brace in one line",
+			input    = `
+scene_walk(scene, nil, proc(node: Node, scene: Scene, data: rawptr) {
+		ct := &g_dx_context
+
+		if node.mesh == -1 {
+			return
+		}
+
+		mesh_to_render := scene.meshes[node.mesh]
+
+		for prim in mesh_to_render.primitives {
+			dc := DrawConstants {
+				mesh_index = u32(g_mesh_drawn_count),
+				material_index = u32(prim.material_index),
+			}
+			ct.cmdlist->SetGraphicsRoot32BitConstants(0, 2, &dc, 0)
+			ct.cmdlist->DrawIndexedInstanced(prim.index_count, 1, prim.index_offset, 0, 0)
+		}
+})
+`,
+			expected = `
+scene_walk(scene, nil, proc(node: Node, scene: Scene, data: rawptr) {
+	ct := &g_dx_context
+
+	if node.mesh == -1 {
+		return
+	}
+
+	mesh_to_render := scene.meshes[node.mesh]
+
+	for prim in mesh_to_render.primitives {
+		dc := DrawConstants {
+			mesh_index = u32(g_mesh_drawn_count),
+			material_index = u32(prim.material_index),
+		}
+		ct.cmdlist->SetGraphicsRoot32BitConstants(0, 2, &dc, 0)
+		ct.cmdlist->DrawIndexedInstanced(prim.index_count, 1, prim.index_offset, 0, 0)
+	}
+})
+`,
+		},
+		{
 			name     = "paren and brace indentation - advanced",
 			input    = `
 
@@ -280,9 +323,9 @@ lala :: proc() {
 			defer strings.builder_destroy(&sb)
 			
 			fmt.sbprintln(&sb,"FAIL: ", tc.name)
-			fmt.sbprintln(&sb,"=====   Input:    ", make_whitespace_visible(tc.input))
-			fmt.sbprintln(&sb,"=====   Expected: ", make_whitespace_visible(tc.expected))
-			fmt.sbprintln(&sb,"=====   Test output: ", make_whitespace_visible(result))
+			fmt.sbprintfln(&sb,"=====   Input:    \n%v", make_whitespace_visible(tc.input))
+			fmt.sbprintfln(&sb,"=====   Expected: \n%v", make_whitespace_visible(tc.expected))
+			fmt.sbprintfln(&sb,"=====   Test output: \n%v", make_whitespace_visible(result))
 			
 			log.error(strings.to_string(sb))
 			

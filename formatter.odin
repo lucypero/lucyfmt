@@ -11,6 +11,7 @@ Parser_State :: struct {
 
 Scan_Result :: struct {
 	leading_close:     bool,
+	// change in indentation
 	net_change:       int,
 	paren_change:     int,
 	leading_close_paren: bool,
@@ -20,7 +21,7 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 	result: Scan_Result
 	found_first_non_ws := false
 	i := 0
-
+	
 	for i < len(line) {
 		ch := line[i]
 
@@ -139,6 +140,7 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 
 		i += 1
 	}
+	
 
 	return result
 }
@@ -169,7 +171,7 @@ format_source :: proc(input: string) -> string {
 			continue
 		}
 
-		result := scan_line(stripped, &state)
+		result : Scan_Result = scan_line(stripped, &state)
 
 		// DNT: Do not touch (inside of multi line strings and multi line comments)
 		did_dnt_start : bool = (state.in_raw_string && !previous_state.in_raw_string) ||
@@ -197,7 +199,7 @@ format_source :: proc(input: string) -> string {
 			if strings.starts_with(stripped, "case") {
 				write_indent -= 1
 			}
-
+			
 			// add back indentation
 			for _ in 0 ..< write_indent {
 				strings.write_byte(&builder, '\t')
@@ -207,8 +209,13 @@ format_source :: proc(input: string) -> string {
 			strings.write_string(&builder, stripped)
 		}
 
-		state.indent_level = max(0, state.indent_level + result.net_change)
-		state.paren_depth = max(0, state.paren_depth + result.paren_change)
+		state.indent_level = max(0, state.indent_level + min(result.net_change, 1))
+		state.paren_depth = max(0, state.paren_depth + min(result.paren_change, 1))
+		
+		// Do not over-indent if there were parens and brace opens on the same line
+		if result.net_change > 0 && result.paren_change > 0 {
+			state.paren_depth -= 1
+		}
 
 		strings.write_byte(&builder, '\n')
 
