@@ -1,5 +1,6 @@
 package lucyfmt
 
+// import "core:fmt"
 import "core:strings"
 import "core:container/queue"
 
@@ -209,17 +210,25 @@ format_source :: proc(input: string) -> string {
 		} else { // Add indentation as appropriate
 			
 			write_indent: int
+			hit_leading : int
 			
 			if result.leading_close {
 				write_indent = max(0, state.indent_level - 1)
+				hit_leading += 1
 			} else {
 				write_indent = state.indent_level
 			}
 			
 			if result.leading_close_paren {
 				write_indent = max(0, write_indent + state.paren_depth - 1)
+				hit_leading += 1
 			} else {
 				write_indent += state.paren_depth
+			}
+			
+			// Prevent under-indent if there are close parens and close brace on the same line
+			if hit_leading >= 2 {
+				write_indent += 1
 			}
 
 			if strings.starts_with(stripped, "case") {

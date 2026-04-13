@@ -224,7 +224,7 @@ for &scene in g_scenes {
 			ct.cmdlist->DrawIndexedInstanced(prim.index_count, 1, prim.index_offset, 0, 0)
 		}
 	})
-	
+
 	asd := 3
 }
 `,
@@ -398,12 +398,12 @@ lala :: proc() {
 			// expected
 			fmt.sbprintfln(&sb,"==== Expected: ")
 			for line in expected_lines {
-				fmt.sbprintfln(&sb,"%v", make_whitespace_visible(line))
+				fmt.sbprintfln(&sb,"%v", line)
 			}
 			
 			fmt.sbprintfln(&sb,"==== Test Output: ")
 			for line in res_lines {
-				fmt.sbprintfln(&sb,"%v", make_whitespace_visible(line))
+				fmt.sbprintfln(&sb,"%v", line)
 			}
 			
 			log.error(strings.to_string(sb))
