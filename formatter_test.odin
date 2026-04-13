@@ -388,15 +388,23 @@ lala :: proc() {
 			for line, i in res_lines {
 				if line != expected_lines[i] {
 					
-					you are here;
-					expected_lines[i] = strings.concatenate(expected_lines[i], " <-- DISCREPANCY")
+					// you are here;
+					expected_lines[i] = strings.concatenate({expected_lines[i], " <-- DISCREPANCY"})
+					res_lines[i] = strings.concatenate({res_lines[i], " <-- DISCREPANCY"})
 					
-					// fmt.sbprintfln(&sb,"%v =====   Input:    \n%v", i, make_whitespace_visible(tc.input))
-					fmt.sbprintfln(&sb,"%v =====   Expected: \n%v", i, make_whitespace_visible(expected_lines[i]))
-					fmt.sbprintfln(&sb,"%v =====   Test output: \n%v", i, make_whitespace_visible(res_lines[i]))
 				}
 			}
 			
+			// expected
+			fmt.sbprintfln(&sb,"==== Expected: ")
+			for line in expected_lines {
+				fmt.sbprintfln(&sb,"%v", make_whitespace_visible(line))
+			}
+			
+			fmt.sbprintfln(&sb,"==== Test Output: ")
+			for line in res_lines {
+				fmt.sbprintfln(&sb,"%v", make_whitespace_visible(line))
+			}
 			
 			log.error(strings.to_string(sb))
 			
