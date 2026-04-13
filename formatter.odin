@@ -1,12 +1,19 @@
 package lucyfmt
 
 import "core:strings"
+import "core:container/queue"
+
+IndentType :: enum {
+	Normal,
+	When
+}
 
 Parser_State :: struct {
 	indent_level:        int,
 	multi_comment_depth: int,
 	in_raw_string:       bool,
 	paren_depth:          int,
+	ident_stack: queue.Queue(IndentType)
 }
 
 Scan_Result :: struct {
@@ -15,6 +22,7 @@ Scan_Result :: struct {
 	net_change:       int,
 	paren_change:     int,
 	leading_close_paren: bool,
+	when_detected: bool
 }
 
 scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
@@ -32,6 +40,10 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 			}
 			i += 1
 			continue
+		}
+		
+		if strings.starts_with(line[i:], "when") {
+			result.when_detected = true
 		}
 
 		// Inside a multi-line comment — look for /* (nest) or */ (unnest)
@@ -105,16 +117,26 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 
 		// Braces
 		if ch == '{' {
-			result.net_change += 1
+			if result.when_detected {
+				queue.push_front(&state.ident_stack, IndentType.When)
+			} else {
+				queue.push_front(&state.ident_stack, IndentType.Normal)
+				result.net_change += 1
+			}
 
 			i += 1
 			continue
 		}
 		if ch == '}' {
-			if !found_first_non_ws && ch != ' ' && ch != '\t' {
+			indent_type := queue.pop_front(&state.ident_stack)
+			if indent_type != .When {
+				result.net_change -= 1
+			}
+			
+			if !found_first_non_ws && ch != ' ' && ch != '\t' && indent_type != .When {
 				result.leading_close = true
 			}
-			result.net_change -= 1
+			
 			i += 1
 			continue
 		}
@@ -147,11 +169,12 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 
 format_source :: proc(input: string) -> string {
 	// Normalize \r\n to \n
-	normalized, was_alloc := strings.replace_all(input, "\r\n", "\n")
+	normalized, _ := strings.replace_all(input, "\r\n", "\n")
 
 	lines := strings.split(normalized, "\n")
 
 	state := Parser_State{}
+	queue.init(&state.ident_stack)
 	builder: strings.Builder
 	strings.builder_init(&builder, 0, len(input))
 
@@ -184,12 +207,15 @@ format_source :: proc(input: string) -> string {
 			// Leave the line as is.
 			strings.write_string(&builder, line)
 		} else { // Add indentation as appropriate
+			
 			write_indent: int
+			
 			if result.leading_close {
 				write_indent = max(0, state.indent_level - 1)
 			} else {
 				write_indent = state.indent_level
 			}
+			
 			if result.leading_close_paren {
 				write_indent = max(0, write_indent + state.paren_depth - 1)
 			} else {
@@ -216,7 +242,7 @@ format_source :: proc(input: string) -> string {
 		if result.net_change > 0 && result.paren_change > 0 {
 			state.paren_depth -= 1
 		}
-
+		
 		strings.write_byte(&builder, '\n')
 
 		previous_state = state

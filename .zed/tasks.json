@@ -1,10 +1,10 @@
 [
   {
     "label": "test",
-    "command": "odin test . -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_LOG_LEVEL=error",
+    "command": "odin test . -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_LOG_LEVEL=error -vet",
   },
   {
     "label": "build opt",
-    "command": "odin build . -o:speed"
+    "command": "odin build . -o:speed -vet"
   },
 ]

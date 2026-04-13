@@ -131,7 +131,33 @@ test_format :: proc(t: ^testing.T) {
 		{
 			name     = "multiple parens and brace in one line",
 			input    = `
-scene_walk(scene, nil, proc(node: Node, scene: Scene, data: rawptr) {
+for &scene in g_scenes {
+	st := scene_status_load(&scene.status)
+	#partial switch st {
+	case .Ready, .QueuedForDeletion:
+	case:
+		continue
+	}
+
+	queue_wait_on_upload_fence(ct.queue, scene.fence_value)
+
+	// binding vertex buffer view and instance buffer view
+	vertex_buffers_views := [?]dx.VERTEX_BUFFER_VIEW{scene.vertex_buffer_view}
+
+	ct.cmdlist->IASetVertexBuffers(0, len(vertex_buffers_views), &vertex_buffers_views[0])
+	ct.cmdlist->IASetIndexBuffer(&scene.index_buffer_view)
+
+	// rendering each mesh individually
+	// going through scene tree
+
+	// drawing scene
+
+	DrawConstants :: struct {
+		mesh_index: u32,
+		material_index: u32,
+	}
+
+	scene_walk(scene, nil, proc(node: Node, scene: Scene, data: rawptr) {
 		ct := &g_dx_context
 
 		if node.mesh == -1 {
@@ -148,27 +174,59 @@ scene_walk(scene, nil, proc(node: Node, scene: Scene, data: rawptr) {
 			ct.cmdlist->SetGraphicsRoot32BitConstants(0, 2, &dc, 0)
 			ct.cmdlist->DrawIndexedInstanced(prim.index_count, 1, prim.index_offset, 0, 0)
 		}
-})
+	})
+	
+	asd := 3
+}
 `,
 			expected = `
-scene_walk(scene, nil, proc(node: Node, scene: Scene, data: rawptr) {
-	ct := &g_dx_context
-
-	if node.mesh == -1 {
-		return
+for &scene in g_scenes {
+	st := scene_status_load(&scene.status)
+	#partial switch st {
+	case .Ready, .QueuedForDeletion:
+	case:
+		continue
 	}
 
-	mesh_to_render := scene.meshes[node.mesh]
+	queue_wait_on_upload_fence(ct.queue, scene.fence_value)
 
-	for prim in mesh_to_render.primitives {
-		dc := DrawConstants {
-			mesh_index = u32(g_mesh_drawn_count),
-			material_index = u32(prim.material_index),
+	// binding vertex buffer view and instance buffer view
+	vertex_buffers_views := [?]dx.VERTEX_BUFFER_VIEW{scene.vertex_buffer_view}
+
+	ct.cmdlist->IASetVertexBuffers(0, len(vertex_buffers_views), &vertex_buffers_views[0])
+	ct.cmdlist->IASetIndexBuffer(&scene.index_buffer_view)
+
+	// rendering each mesh individually
+	// going through scene tree
+
+	// drawing scene
+
+	DrawConstants :: struct {
+		mesh_index: u32,
+		material_index: u32,
+	}
+
+	scene_walk(scene, nil, proc(node: Node, scene: Scene, data: rawptr) {
+		ct := &g_dx_context
+
+		if node.mesh == -1 {
+			return
 		}
-		ct.cmdlist->SetGraphicsRoot32BitConstants(0, 2, &dc, 0)
-		ct.cmdlist->DrawIndexedInstanced(prim.index_count, 1, prim.index_offset, 0, 0)
-	}
-})
+
+		mesh_to_render := scene.meshes[node.mesh]
+
+		for prim in mesh_to_render.primitives {
+			dc := DrawConstants {
+				mesh_index = u32(g_mesh_drawn_count),
+				material_index = u32(prim.material_index),
+			}
+			ct.cmdlist->SetGraphicsRoot32BitConstants(0, 2, &dc, 0)
+			ct.cmdlist->DrawIndexedInstanced(prim.index_count, 1, prim.index_offset, 0, 0)
+		}
+	})
+	
+	asd := 3
+}
 `,
 		},
 		{
@@ -265,7 +323,7 @@ lala :: proc() {
 	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
 
 	when ODIN_DEBUG {
-		lprintln("Tracking Allocations...")
+	lprintln("Tracking Allocations...")
 	}
 
 	apple := "table"
@@ -322,10 +380,23 @@ lala :: proc() {
 			sb := strings.builder_make_none()
 			defer strings.builder_destroy(&sb)
 			
+			res_lines := strings.split_lines(result)
+			expected_lines := strings.split_lines(tc.expected)
+			
 			fmt.sbprintln(&sb,"FAIL: ", tc.name)
-			fmt.sbprintfln(&sb,"=====   Input:    \n%v", make_whitespace_visible(tc.input))
-			fmt.sbprintfln(&sb,"=====   Expected: \n%v", make_whitespace_visible(tc.expected))
-			fmt.sbprintfln(&sb,"=====   Test output: \n%v", make_whitespace_visible(result))
+			
+			for line, i in res_lines {
+				if line != expected_lines[i] {
+					
+					you are here;
+					expected_lines[i] = strings.concatenate(expected_lines[i], " <-- DISCREPANCY")
+					
+					// fmt.sbprintfln(&sb,"%v =====   Input:    \n%v", i, make_whitespace_visible(tc.input))
+					fmt.sbprintfln(&sb,"%v =====   Expected: \n%v", i, make_whitespace_visible(expected_lines[i]))
+					fmt.sbprintfln(&sb,"%v =====   Test output: \n%v", i, make_whitespace_visible(res_lines[i]))
+				}
+			}
+			
 			
 			log.error(strings.to_string(sb))
 			
@@ -351,12 +422,11 @@ test_crlf_normalization :: proc(t: ^testing.T) {
 make_whitespace_visible :: proc(str: string) -> string {
 	
 	str := str
-	did_allocate: bool
 	
 	sb := strings.builder_make_none()
 	strings.write_string(&sb, str)
 	
-	lines, err := strings.split_lines(str)
+	lines, _ := strings.split_lines(str)
 	
 	strings.builder_replace_all(&sb, "\t", "[TAB]")
 	
