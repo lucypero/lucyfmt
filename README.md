@@ -30,8 +30,10 @@ output:
 ## Build
 
 ```sh
-odin build . -out:lucyfmt
+odin build .
 ```
+
+Last compiled with Odin version: `dev-2026-08:db0cd7963`
 
 ## Usage
 

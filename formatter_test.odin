@@ -13,7 +13,7 @@ Test_Case :: struct {
 
 @(test)
 test_format :: proc(t: ^testing.T) {
-	cases := []Test_Case{
+cases := []Test_Case{
 		// 1. Basic indent
 		{
 			name     = "basic indent",
@@ -175,7 +175,7 @@ for &scene in g_scenes {
 			ct.cmdlist->DrawIndexedInstanced(prim.index_count, 1, prim.index_offset, 0, 0)
 		}
 	})
-	
+
 	asd := 3
 }
 `,
@@ -240,9 +240,9 @@ import "core:fmt"
 main :: proc() {
 
 		// comment here
-		
+
 	a: int
-	
+
 	fmt.printfln("%v %v %v",
 	a,
 	3,
@@ -309,11 +309,11 @@ hello hello
 
 lala :: proc() {
 	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
-	
+
 	when ODIN_DEBUG {
 		lprintln("Tracking Allocations...")
 	}
-	
+
 	apple := "table"
 }
 `,
@@ -333,11 +333,11 @@ lala :: proc() {
 		{
 			name = "switch statement",
 			input = `
-			
+
 lala :: proc() {
 
 	imgui_impl_sdl2.ProcessEvent(&e)
-	
+
 	#partial switch e.type {
 		case .QUIT:
 		break main_loop
@@ -346,7 +346,7 @@ lala :: proc() {
 				break main_loop
 			}
 	}
-	
+
 	lala := 1
 }
 `,
@@ -369,7 +369,7 @@ lala :: proc() {
 }
 `
 		},
-		
+
 	}
 
 	for tc in cases {
@@ -379,35 +379,35 @@ lala :: proc() {
 		if result != tc.expected {
 			sb := strings.builder_make_none()
 			defer strings.builder_destroy(&sb)
-			
+
 			res_lines := strings.split_lines(result)
 			expected_lines := strings.split_lines(tc.expected)
-			
+
 			fmt.sbprintln(&sb,"FAIL: ", tc.name)
-			
+
 			for line, i in res_lines {
 				if line != expected_lines[i] {
-					
+
 					// you are here;
 					expected_lines[i] = strings.concatenate({expected_lines[i], " <-- DISCREPANCY"})
 					res_lines[i] = strings.concatenate({res_lines[i], " <-- DISCREPANCY"})
-					
+
 				}
 			}
-			
+
 			// expected
 			fmt.sbprintfln(&sb,"==== Expected: ")
 			for line in expected_lines {
 				fmt.sbprintfln(&sb,"%v", line)
 			}
-			
+
 			fmt.sbprintfln(&sb,"==== Test Output: ")
 			for line in res_lines {
 				fmt.sbprintfln(&sb,"%v", line)
 			}
-			
+
 			log.error(strings.to_string(sb))
-			
+
 			testing.fail(t)
 		}
 	}
@@ -428,29 +428,16 @@ test_crlf_normalization :: proc(t: ^testing.T) {
 }
 
 make_whitespace_visible :: proc(str: string) -> string {
-	
+
 	str := str
-	
+
 	sb := strings.builder_make_none()
 	strings.write_string(&sb, str)
-	
-	lines, _ := strings.split_lines(str)
-	
 	strings.builder_replace_all(&sb, "\t", "[TAB]")
-	
-	for line in lines {
-		// TODO:  make leading whitespace visible
-		strings.starts_with(line, " ")
-		
-		
-		
-		// TODO: make trailing whitespace visible
-	}
-	
 	strings.write_string(&sb, "[END]")
-	
-	
+
+
 	// str, did_allocate = strings.replace_all(str, " ", "[TAB]")
-	
+
 	return strings.to_string(sb)
 }
