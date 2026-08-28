@@ -330,6 +330,66 @@ lala :: proc() {
 }
 `
 		},
+		// 20. Cuddle: proc brace pulled onto the signature line
+		{
+			name     = "cuddle proc brace",
+			input    = "main :: proc()\n{\nx := 1\n}\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n",
+		},
+		// 21. Cuddle: struct brace
+		{
+			name     = "cuddle struct brace",
+			input    = "Foo :: struct\n{\nx: int,\n}\n",
+			expected = "Foo :: struct {\n\tx: int,\n}\n",
+		},
+		// 22. Cuddle: control-flow brace (every construct)
+		{
+			name     = "cuddle if brace",
+			input    = "if true\n{\nx := 1\n}\n",
+			expected = "if true {\n\tx := 1\n}\n",
+		},
+		// 23. Cuddle: intervening blank lines are removed
+		{
+			name     = "cuddle skips blank lines",
+			input    = "main :: proc()\n\n\n{\nx := 1\n}\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n",
+		},
+		// 24. Cuddle: split signature, brace onto the lone close paren
+		{
+			name     = "cuddle split signature",
+			input    = "foo :: proc(\na: int,\nb: int,\n)\n{\nx := 1\n}\n",
+			expected = "foo :: proc(\n\ta: int,\n\tb: int,\n) {\n\tx := 1\n}\n",
+		},
+		// 25. Cuddle: bail when a comment sits between definition and brace
+		{
+			name     = "cuddle bails on comment gap",
+			input    = "main :: proc()\n// note\n{\nx := 1\n}\n",
+			expected = "main :: proc()\n// note\n{\n\tx := 1\n}\n",
+		},
+		// 26. Cuddle: trailing comment on the brace line is carried along
+		{
+			name     = "cuddle carries trailing comment",
+			input    = "main :: proc()\n{ // open\nx := 1\n}\n",
+			expected = "main :: proc() { // open\n\tx := 1\n}\n",
+		},
+		// 27. Cuddle: brace inside a raw string is left alone
+		{
+			name     = "cuddle ignores raw string brace",
+			input    = "x := `\n{\n`\nif true\n{\ny := 1\n}\n",
+			expected = "x := `\n{\n`\nif true {\n\ty := 1\n}\n",
+		},
+		// 28. Cuddle: already cuddled input is idempotent
+		{
+			name     = "cuddle idempotent",
+			input    = "main :: proc() {\n\tx := 1\n}\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n",
+		},
+		// 29. Cuddle: else on its own line
+		{
+			name     = "cuddle else brace",
+			input    = "if true {\nx := 1\n} else\n{\ny := 2\n}\n",
+			expected = "if true {\n\tx := 1\n} else {\n\ty := 2\n}\n",
+		},
 		{
 			name = "switch statement",
 			input = `

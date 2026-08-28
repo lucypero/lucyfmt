@@ -168,11 +168,130 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 	return result
 }
 
+// Returns true if it is safe to append " {" to the end of prev_line, i.e. the
+// line does not end inside / with a comment and does not already end with a brace.
+can_append_brace :: proc(prev_line: string) -> bool {
+	s := strings.trim_space(prev_line)
+	if len(s) == 0 {
+		return false
+	}
+	if strings.starts_with(s, "//") || strings.starts_with(s, "/*") {
+		return false
+	}
+	if strings.ends_with(s, "*/") || strings.ends_with(s, "{") {
+		return false
+	}
+
+	// Reject if a comment opens somewhere on the line (outside string/char/raw).
+	i := 0
+	in_str, in_char, in_raw: bool
+	for i < len(s) {
+		ch := s[i]
+		if in_raw {
+			if ch == '`' {
+				in_raw = false
+			}
+			i += 1
+			continue
+		}
+		if in_str {
+			if ch == '\\' {
+				i += 2
+				continue
+			}
+			if ch == '"' {
+				in_str = false
+			}
+			i += 1
+			continue
+		}
+		if in_char {
+			if ch == '\\' {
+				i += 2
+				continue
+			}
+			if ch == '\'' {
+				in_char = false
+			}
+			i += 1
+			continue
+		}
+		if ch == '"' {
+			in_str = true
+			i += 1
+			continue
+		}
+		if ch == '\'' {
+			in_char = true
+			i += 1
+			continue
+		}
+		if ch == '`' {
+			in_raw = true
+			i += 1
+			continue
+		}
+		if i + 1 < len(s) && ch == '/' && (s[i + 1] == '/' || s[i + 1] == '*') {
+			return false
+		}
+		i += 1
+	}
+
+	return true
+}
+
+// Pull a lone opening brace (optionally followed by a line comment) up onto the
+// previous non-empty line, for every brace-opening construct. Intervening blank
+// lines are dropped. Braces inside raw strings / multi-line comments are left
+// untouched, and the merge is skipped when the target line ends in a comment.
+cuddle_braces :: proc(lines: []string) -> []string {
+	out := make([dynamic]string)
+
+	state := Parser_State{}
+	queue.init(&state.ident_stack)
+
+	for line in lines {
+		in_dnt := state.in_raw_string || state.multi_comment_depth > 0
+		stripped := strings.trim_space(line)
+
+		attached := false
+		if !in_dnt && len(stripped) > 0 && stripped[0] == '{' {
+			rest := strings.trim_space(stripped[1:])
+			is_lone := len(rest) == 0 || strings.starts_with(rest, "//")
+			if is_lone {
+				last := len(out) - 1
+				for last >= 0 && len(strings.trim_space(out[last])) == 0 {
+					last -= 1
+				}
+				if last >= 0 && can_append_brace(out[last]) {
+					merged, _ := strings.concatenate({strings.trim_right(out[last], " \t"), " {"})
+					if len(rest) > 0 {
+						merged, _ = strings.concatenate({merged, " ", rest})
+					}
+					out[last] = merged
+					for len(out) > last + 1 {
+						pop(&out)
+					}
+					attached = true
+				}
+			}
+		}
+
+		if !attached {
+			append(&out, line)
+		}
+
+		scan_line(stripped, &state)
+	}
+
+	return out[:]
+}
+
 format_source :: proc(input: string) -> string {
 	// Normalize \r\n to \n
 	normalized, _ := strings.replace_all(input, "\r\n", "\n")
 
-	lines := strings.split(normalized, "\n")
+	lines := cuddle_braces(strings.split(normalized, "\n"))
 
 	state := Parser_State{}
 	queue.init(&state.ident_stack)
