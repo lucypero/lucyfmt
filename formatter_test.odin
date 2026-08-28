@@ -390,6 +390,60 @@ lala :: proc() {
 			input    = "if true {\nx := 1\n} else\n{\ny := 2\n}\n",
 			expected = "if true {\n\tx := 1\n} else {\n\ty := 2\n}\n",
 		},
+		// 30. Collapse else: bare else, Allman style
+		{
+			name     = "collapse bare else",
+			input    = "if a {\nx\n}\nelse\n{\ny\n}\n",
+			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
+		},
+		// 31. Collapse else: else if with condition and brace
+		{
+			name     = "collapse else if",
+			input    = "if a {\nx\n}\nelse if b {\ny\n}\n",
+			expected = "if a {\n\tx\n} else if b {\n\ty\n}\n",
+		},
+		// 32. Collapse else: already inline is idempotent
+		{
+			name     = "collapse else idempotent",
+			input    = "if a {\nx\n} else {\ny\n}\n",
+			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
+		},
+		// 33. Collapse else: intervening blank lines removed
+		{
+			name     = "collapse else skips blank lines",
+			input    = "if a {\nx\n}\n\n\nelse {\ny\n}\n",
+			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
+		},
+		// 34. Collapse else: bail when a comment sits between } and else
+		{
+			name     = "collapse else bails on comment gap",
+			input    = "if a {\nx\n}\n// hmm\nelse {\ny\n}\n",
+			expected = "if a {\n\tx\n}\n// hmm\nelse {\n\ty\n}\n",
+		},
+		// 35. Collapse else: fully Allman if + else
+		{
+			name     = "collapse else full allman",
+			input    = "if a\n{\nx\n}\nelse\n{\ny\n}\n",
+			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
+		},
+		// 36. Collapse else: `else` word boundary, does not eat `elsewhere`
+		{
+			name     = "collapse else word boundary",
+			input    = "main :: proc() {\nelsewhere := 1\n}\n",
+			expected = "main :: proc() {\n\telsewhere := 1\n}\n",
+		},
+		// 37. Collapse else: else when (when blocks stay un-indented)
+		{
+			name     = "collapse else when",
+			input    = "when A {\nx\n}\nelse when B {\ny\n}\n",
+			expected = "when A {\nx\n} else when B {\ny\n}\n",
+		},
+		// 38. Collapse else: `else` inside a raw string is left alone
+		{
+			name     = "collapse else ignores raw string",
+			input    = "x := `\nelse\n`\nif a {\nb\n}\nelse {\nc\n}\n",
+			expected = "x := `\nelse\n`\nif a {\n\tb\n} else {\n\tc\n}\n",
+		},
 		{
 			name = "switch statement",
 			input = `

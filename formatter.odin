@@ -168,9 +168,24 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 	return result
 }
 
-// Returns true if it is safe to append " {" to the end of prev_line, i.e. the
-// line does not end inside / with a comment and does not already end with a brace.
-can_append_brace :: proc(prev_line: string) -> bool {
+// Returns true if s starts with word and the character after it (if any) does
+// not continue an identifier, i.e. word appears as a whole token.
+starts_with_word :: proc(s: string, word: string) -> bool {
+	if !strings.starts_with(s, word) {
+		return false
+	}
+	if len(s) == len(word) {
+		return true
+	}
+	c := s[len(word)]
+	is_ident := (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+	return !is_ident
+}
+
+// Returns true if it is safe to append tokens to the end of prev_line, i.e. the
+// line does not end inside / with a comment and does not already end with an
+// opening brace.
+can_append_to_line :: proc(prev_line: string) -> bool {
 	s := strings.trim_space(prev_line)
 	if len(s) == 0 {
 		return false
@@ -263,7 +278,7 @@ cuddle_braces :: proc(lines: []string) -> []string {
 				for last >= 0 && len(strings.trim_space(out[last])) == 0 {
 					last -= 1
 				}
-				if last >= 0 && can_append_brace(out[last]) {
+				if last >= 0 && can_append_to_line(out[last]) {
 					merged, _ := strings.concatenate({strings.trim_right(out[last], " \t"), " {"})
 					if len(rest) > 0 {
 						merged, _ = strings.concatenate({merged, " ", rest})
@@ -287,11 +302,56 @@ cuddle_braces :: proc(lines: []string) -> []string {
 	return out[:]
 }
 
+// Pull a line beginning with the `else` keyword up onto the previous non-empty
+// line when that line ends with a closing brace. The whole `else` line is
+// appended (`else`, `else {`, `else if cond {`, `else when ... {`). Intervening
+// blank lines are dropped; a comment in the gap or a trailing comment on the
+// brace line cancels the merge, and `else` inside a raw string / multi-line
+// comment is ignored.
+cuddle_else :: proc(lines: []string) -> []string {
+	out := make([dynamic]string)
+
+	state := Parser_State{}
+	queue.init(&state.ident_stack)
+
+	for line in lines {
+		in_dnt := state.in_raw_string || state.multi_comment_depth > 0
+		stripped := strings.trim_space(line)
+
+		attached := false
+		if !in_dnt && starts_with_word(stripped, "else") {
+			last := len(out) - 1
+			for last >= 0 && len(strings.trim_space(out[last])) == 0 {
+				last -= 1
+			}
+			if last >= 0 {
+				prev := strings.trim_right(out[last], " \t")
+				if strings.ends_with(prev, "}") && can_append_to_line(out[last]) {
+					merged, _ := strings.concatenate({prev, " ", stripped})
+					out[last] = merged
+					for len(out) > last + 1 {
+						pop(&out)
+					}
+					attached = true
+				}
+			}
+		}
+
+		if !attached {
+			append(&out, line)
+		}
+
+		scan_line(stripped, &state)
+	}
+
+	return out[:]
+}
+
 format_source :: proc(input: string) -> string {
 	// Normalize \r\n to \n
 	normalized, _ := strings.replace_all(input, "\r\n", "\n")
 
-	lines := cuddle_braces(strings.split(normalized, "\n"))
+	lines := cuddle_else(cuddle_braces(strings.split(normalized, "\n")))
 
 	state := Parser_State{}
 	queue.init(&state.ident_stack)
