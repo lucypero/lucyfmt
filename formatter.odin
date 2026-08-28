@@ -255,10 +255,151 @@ can_append_to_line :: proc(prev_line: string) -> bool {
 	return true
 }
 
+// Returns s with any trailing // line comment removed (comment markers inside
+// strings / char / raw literals are ignored).
+strip_trailing_line_comment :: proc(s: string) -> string {
+	i := 0
+	in_str, in_char, in_raw: bool
+	for i < len(s) {
+		ch := s[i]
+		if in_raw {
+			if ch == '`' {
+				in_raw = false
+			}
+			i += 1
+			continue
+		}
+		if in_str {
+			if ch == '\\' {
+				i += 2
+				continue
+			}
+			if ch == '"' {
+				in_str = false
+			}
+			i += 1
+			continue
+		}
+		if in_char {
+			if ch == '\\' {
+				i += 2
+				continue
+			}
+			if ch == '\'' {
+				in_char = false
+			}
+			i += 1
+			continue
+		}
+		if ch == '"' {
+			in_str = true
+			i += 1
+			continue
+		}
+		if ch == '\'' {
+			in_char = true
+			i += 1
+			continue
+		}
+		if ch == '`' {
+			in_raw = true
+			i += 1
+			continue
+		}
+		if i + 1 < len(s) && ch == '/' && s[i + 1] == '/' {
+			return strings.trim_right(s[:i], " \t")
+		}
+		i += 1
+	}
+	return s
+}
+
+// Returns true if the statement whose last line is out[last] is a block header
+// that legitimately expects a following `{` body: a control-flow statement
+// (if / for / switch / when / else, incl. a `#partial` prefix or a label), a
+// proc / struct / enum / union / bit_field declaration, or a bare `struct` /
+// `enum` / `union` / `bit_field` / `else` at the end of the line. A plain
+// expression or assignment above a lone `{` is a standalone scope block and is
+// left alone.
+statement_is_block_header :: proc(out: [dynamic]string, last: int) -> bool {
+	// Walk back over continuation lines to the statement's first line.
+	start := last
+	for start > 0 {
+		cur := strings.trim_space(out[start])
+		prev := strings.trim_right(strings.trim_space(out[start - 1]), " \t")
+		cont := false
+		if len(cur) > 0 && (cur[0] == ')' || cur[0] == ']' || cur[0] == ',') {
+			cont = true
+		}
+		if len(prev) > 0 {
+			lastc := prev[len(prev) - 1]
+			if lastc == ',' || lastc == '(' || lastc == '[' {
+				cont = true
+			}
+			if strings.ends_with(prev, "->") || strings.ends_with(prev, "||") || strings.ends_with(prev, "&&") {
+				cont = true
+			}
+		}
+		if !cont {
+			break
+		}
+		start -= 1
+	}
+
+	// Compact (whitespace-free) statement text, comments stripped.
+	b: strings.Builder
+	strings.builder_init(&b, 0, 64)
+	for j in start ..= last {
+		s := strip_trailing_line_comment(strings.trim_space(out[j]))
+		for k in 0 ..< len(s) {
+			c := s[k]
+			if c != ' ' && c != '\t' {
+				strings.write_byte(&b, c)
+			}
+		}
+	}
+	compact := strings.to_string(b)
+
+	if strings.contains(compact, "::proc") ||
+	   strings.contains(compact, "::struct") ||
+	   strings.contains(compact, "::enum") ||
+	   strings.contains(compact, "::union") ||
+	   strings.contains(compact, "::bit_field") {
+		return true
+	}
+
+	// First two tokens of the statement's first line (handles `#partial switch`
+	// and `loop: for`).
+	first := strip_trailing_line_comment(strings.trim_space(out[start]))
+	toks := strings.fields(first)
+	check := min(2, len(toks))
+	for i in 0 ..< check {
+		t := strings.trim_suffix(strings.trim_prefix(toks[i], "#"), ":")
+		if t == "if" || t == "for" || t == "switch" || t == "when" || t == "else" {
+			return true
+		}
+	}
+
+	// Last token of the last line: bare `struct` / `enum` / `union` /
+	// `bit_field` / `else`.
+	lastline := strip_trailing_line_comment(strings.trim_space(out[last]))
+	ltoks := strings.fields(lastline)
+	if len(ltoks) > 0 {
+		lt := ltoks[len(ltoks) - 1]
+		if lt == "struct" || lt == "enum" || lt == "union" || lt == "bit_field" || lt == "else" {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Pull a lone opening brace (optionally followed by a line comment) up onto the
-// previous non-empty line, for every brace-opening construct. Intervening blank
-// lines are dropped. Braces inside raw strings / multi-line comments are left
-// untouched, and the merge is skipped when the target line ends in a comment.
+// previous non-empty line, but only when that line is a block header (proc /
+// struct / control-flow / ...) awaiting its body. Standalone scope blocks are
+// left alone. Intervening blank lines are dropped. Braces inside raw strings /
+// multi-line comments are left untouched, and the merge is skipped when the
+// target line ends in a comment.
 cuddle_braces :: proc(lines: []string) -> []string {
 	out := make([dynamic]string)
 
@@ -278,7 +419,7 @@ cuddle_braces :: proc(lines: []string) -> []string {
 				for last >= 0 && len(strings.trim_space(out[last])) == 0 {
 					last -= 1
 				}
-				if last >= 0 && can_append_to_line(out[last]) {
+				if last >= 0 && can_append_to_line(out[last]) && statement_is_block_header(out, last) {
 					merged, _ := strings.concatenate({strings.trim_right(out[last], " \t"), " {"})
 					if len(rest) > 0 {
 						merged, _ = strings.concatenate({merged, " ", rest})

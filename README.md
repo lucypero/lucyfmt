@@ -3,7 +3,7 @@
 Minimalistic Odin formatter.
 
 - Indents lines with 1 tab per scope level
-- Pulls a lone opening `{` up onto the previous line for every construct (proc, struct, `if`, `for`, …), dropping any blank lines in between. Skips the merge when a comment sits between the definition and the brace, or when the brace is inside a raw string or multi-line comment. A trailing `// comment` on the brace line is carried along.
+- Pulls a lone opening `{` up onto the previous line when that line is a block header awaiting its body — a `proc` / `struct` / `enum` / `union` / `bit_field` declaration or a control-flow statement (`if` / `for` / `switch` / `when` / `else`, `#partial` prefix and labels included). A lone `{` that opens a standalone scope block is left on its own line. Blank lines between the header and the brace are dropped; the merge is skipped when a comment sits in between, or when the brace is inside a raw string or multi-line comment. A trailing `// comment` on the brace line is carried along.
 - Collapses a line beginning with `else` (`else`, `else {`, `else if …`, `else when …`) onto the previous line when it ends with `}`, using the same blank-line / comment / raw-string rules as above.
 - Does not indent `when` blocks
 - Leaves the contents like multi line strings and multi line comments untouched

@@ -444,6 +444,48 @@ lala :: proc() {
 			input    = "x := `\nelse\n`\nif a {\nb\n}\nelse {\nc\n}\n",
 			expected = "x := `\nelse\n`\nif a {\n\tb\n} else {\n\tc\n}\n",
 		},
+		// 39. Bare scope block after an assignment is NOT cuddled
+		{
+			name     = "bare scope block not cuddled (assignment)",
+			input    = "main :: proc() {\nx := 1\n{\ny := 2\n}\n}\n",
+			expected = "main :: proc() {\n\tx := 1\n\t{\n\t\ty := 2\n\t}\n}\n",
+		},
+		// 40. Bare scope block after a call is NOT cuddled
+		{
+			name     = "bare scope block not cuddled (call)",
+			input    = "main :: proc() {\nsetup()\n{\nwork()\n}\n}\n",
+			expected = "main :: proc() {\n\tsetup()\n\t{\n\t\twork()\n\t}\n}\n",
+		},
+		// 41. Proc with return type, Allman brace, still cuddled
+		{
+			name     = "cuddle proc with return type",
+			input    = "add :: proc(a: int, b: int) -> int\n{\nreturn a\n}\n",
+			expected = "add :: proc(a: int, b: int) -> int {\n\treturn a\n}\n",
+		},
+		// 42. #partial switch, Allman brace, still cuddled
+		{
+			name     = "cuddle partial switch",
+			input    = "foo :: proc() {\n#partial switch x\n{\ncase:\n}\n}\n",
+			expected = "foo :: proc() {\n\t#partial switch x {\n\tcase:\n\t}\n}\n",
+		},
+		// 43. Tagged union header (#no_nil) still cuddled
+		{
+			name     = "cuddle tagged union",
+			input    = "V :: union #no_nil\n{\nint,\nf32,\n}\n",
+			expected = "V :: union #no_nil {\n\tint,\n\tf32,\n}\n",
+		},
+		// 44. struct with directive still cuddled
+		{
+			name     = "cuddle struct with directive",
+			input    = "P :: struct #packed\n{\nx: u8,\n}\n",
+			expected = "P :: struct #packed {\n\tx: u8,\n}\n",
+		},
+		// 45. enum with backing type still cuddled
+		{
+			name     = "cuddle enum with backing type",
+			input    = "E :: enum u8\n{\nA,\n}\n",
+			expected = "E :: enum u8 {\n\tA,\n}\n",
+		},
 		{
 			name = "switch statement",
 			input = `
