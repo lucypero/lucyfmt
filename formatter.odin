@@ -30,7 +30,7 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 	result: Scan_Result
 	found_first_non_ws := false
 	i := 0
-	
+
 	for i < len(line) {
 		ch := line[i]
 
@@ -42,7 +42,7 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 			i += 1
 			continue
 		}
-		
+
 		if strings.starts_with(line[i:], "when") {
 			result.when_detected = true
 		}
@@ -119,7 +119,7 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 		// Braces
 		if ch == '{' {
 			if result.when_detected {
-				queue.push_front(&state.ident_stack, IndentType.When)
+			queue.push_front(&state.ident_stack, IndentType.When)
 			} else {
 				queue.push_front(&state.ident_stack, IndentType.Normal)
 				result.net_change += 1
@@ -133,11 +133,11 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 			if indent_type != .When {
 				result.net_change -= 1
 			}
-			
+
 			if !found_first_non_ws && ch != ' ' && ch != '\t' && indent_type != .When {
 				result.leading_close = true
 			}
-			
+
 			i += 1
 			continue
 		}
@@ -163,7 +163,7 @@ scan_line :: proc(line: string, state: ^Parser_State) -> Scan_Result {
 
 		i += 1
 	}
-	
+
 
 	return result
 }
@@ -361,10 +361,10 @@ statement_is_block_header :: proc(out: [dynamic]string, last: int) -> bool {
 	compact := strings.to_string(b)
 
 	if strings.contains(compact, "::proc") ||
-	   strings.contains(compact, "::struct") ||
-	   strings.contains(compact, "::enum") ||
-	   strings.contains(compact, "::union") ||
-	   strings.contains(compact, "::bit_field") {
+	strings.contains(compact, "::struct") ||
+	strings.contains(compact, "::enum") ||
+	strings.contains(compact, "::union") ||
+	strings.contains(compact, "::bit_field") {
 		return true
 	}
 
@@ -528,24 +528,24 @@ format_source :: proc(input: string) -> string {
 			// Leave the line as is.
 			strings.write_string(&builder, line)
 		} else { // Add indentation as appropriate
-			
+
 			write_indent: int
 			hit_leading : int
-			
+
 			if result.leading_close {
 				write_indent = max(0, state.indent_level - 1)
 				hit_leading += 1
 			} else {
 				write_indent = state.indent_level
 			}
-			
+
 			if result.leading_close_paren {
 				write_indent = max(0, write_indent + state.paren_depth - 1)
 				hit_leading += 1
 			} else {
 				write_indent += state.paren_depth
 			}
-			
+
 			// Prevent under-indent if there are close parens and close brace on the same line
 			if hit_leading >= 2 {
 				write_indent += 1
@@ -554,7 +554,7 @@ format_source :: proc(input: string) -> string {
 			if strings.starts_with(stripped, "case") {
 				write_indent -= 1
 			}
-			
+
 			// add back indentation
 			for _ in 0 ..< write_indent {
 				strings.write_byte(&builder, '\t')
@@ -566,12 +566,12 @@ format_source :: proc(input: string) -> string {
 
 		state.indent_level = max(0, state.indent_level + min(result.net_change, 1))
 		state.paren_depth = max(0, state.paren_depth + min(result.paren_change, 1))
-		
+
 		// Do not over-indent if there were parens and brace opens on the same line
 		if result.net_change > 0 && result.paren_change > 0 {
 			state.paren_depth -= 1
 		}
-		
+
 		strings.write_byte(&builder, '\n')
 
 		previous_state = state
