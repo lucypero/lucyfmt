@@ -31,3 +31,22 @@ It's not indenting the if block here. i don't know why.
 			continue
 		}
 ```
+
+
+## Case 3 - Bug
+
+It's indenting when else blocks.
+
+```odin
+	// loading playtest file
+	when PLAYTEST {
+	assert(json_load(PLAYTEST_FILE, &g_playtest))
+	// starting the playtest
+	g_player_progress = -1
+	playtest_advance()
+	} else {
+		// start in edit mode
+		editor_init()
+		g_play_mode = .Editor
+	}
+```
