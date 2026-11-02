@@ -3,30 +3,55 @@
 Minimalistic Odin formatter.
 
 - Indents lines with 1 tab per scope level
-- Pulls a lone opening `{` up onto the previous line when that line is a block header awaiting its body — a `proc` / `struct` / `enum` / `union` / `bit_field` declaration or a control-flow statement (`if` / `for` / `switch` / `when` / `else`, `#partial` prefix and labels included). A lone `{` that opens a standalone scope block is left on its own line. Blank lines between the header and the brace are dropped; the merge is skipped when a comment sits in between, or when the brace is inside a raw string or multi-line comment. A trailing `// comment` on the brace line is carried along.
-- Collapses a line beginning with `else` (`else`, `else {`, `else if …`, `else when …`) onto the previous line when it ends with `}`, using the same blank-line / comment / raw-string rules as above.
+- Enforces `proc() { ` (Opening brace on the same line as the signature)
 - Does not indent `when` blocks
 - Leaves the contents like multi line strings and multi line comments untouched
-- Adds one indent level to parameters if they were broken up into multiple lines. example:
+- Adds one indent level to parameters if they were broken up into multiple lines.
 
-input:
+# Example
+
+Input:
 
 ```odin
-	fmt.printfln("%v %v %v",
-	a,
-	3,
-	5
-	)
+main :: proc() 
+{
+
+	/*
+hello
+   odd multi line comment here
+      spaces and tabs
+*/
+
+	when ODIN_DEBUG 
+	{
+		fmt.println(
+"hello",
+"world"
+		)
+	}
+}
+
+
 ```
 
-output:
+Output:
 
 ```odin
-	fmt.printfln("%v %v %v",
-		a,
-		3,
-		5
+main :: proc() {
+
+	/*
+hello
+   odd multi line comment here
+      spaces and tabs
+*/
+
+	when ODIN_DEBUG {
+	fmt.println(
+		"hello",
+		"world"
 	)
+	}
+}
 ```
 
 ## Build
