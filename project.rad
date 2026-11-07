@@ -1,0 +1,19 @@
+// raddbg 0.9.25 project file
+
+breakpoint:
+{
+  source_location: "formatter.odin:230:1"
+  hit_count: 0
+}
+target:
+{
+  executable: "lucyfmt.exe"
+  working_directory: ""
+  enabled: 1
+  arguments: "E:\\dev\\dx12\\main.odin"
+}
+debug_info:
+{
+  path: "E:/dev/lucyfmt/lucyfmt.pdb"
+  timestamp: 66208892110044
+}
