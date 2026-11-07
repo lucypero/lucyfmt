@@ -16,7 +16,9 @@ what to do with this?
 
 ## Case 2
 
-It's not indenting the if block here. i don't know why.
+It's not indenting the if block here. 
+it's when there's a variable containing "when"
+we must test if the word "when" is in the line. probably checking for whitespace in-between
 
 ```odin
 		if ch == '{' {
@@ -33,7 +35,22 @@ It's not indenting the if block here. i don't know why.
 ```
 
 
-## Case 3 - Bug
+## Case 3
+
+It's indenting the {} incorrectly.
+
+	g_map = {
+		g_map.arena,
+		v2{50, WINDOW_HEIGHT - 10},
+		v2{1,1},
+		map_size,
+		cell_tex_size,
+	{},
+	{},
+	}
+
+
+## Case 4
 
 It's indenting when else blocks.
 
