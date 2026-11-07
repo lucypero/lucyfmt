@@ -1,60 +1,41 @@
 package lucyfmt
 
+import "core:strings"
 import "core:fmt"
 import "core:os"
+import "core:odin/tokenizer"
 
 main :: proc() {
-	args := os.args[1:]
 
-	write_back := false
-	file_path: string
+	path :: "formatter_test.odin"
 
-	for arg in args {
-		if arg == "-w" {
-			write_back = true
-		} else {
-			file_path = arg
-		}
+	file, err := os.read_entire_file(path, context.allocator)
+	defer delete(file)
+	assert(err == nil)
+
+	tk : tokenizer.Tokenizer
+	tokenizer.init(&tk, string(file), path)
+
+	for {
+		tok := tokenizer.scan(&tk)
+		if tok.kind == .EOF do break
+		fmt.printfln("%v", tok)
+	}
+}
+
+format_source :: proc(input: string) -> string {
+	sb_out := strings.builder_make()
+	
+	tk : tokenizer.Tokenizer
+	tokenizer.init(&tk, input, "input_file.odin")
+
+	for {
+		tok := tokenizer.scan(&tk)
+		if tok.kind == .EOF do break
+		strings.write_string(&sb_out, tok.text)
 	}
 
-	input: string
-	read_from_stdin := len(file_path) == 0
 
-	if read_from_stdin {
-		buf:= make([dynamic]u8)
-		tmp: [4096]u8
-		for {
-			n, err := os.read(os.stdin, tmp[:])
-			if n > 0 {
-				append(&buf, ..tmp[:n])
-			}
-			else if n == 0 {
-				break
-			}
-			else if err != nil {
-				fmt.eprintfln("error reading stdin %v", err)
-				os.exit(1)
-			}
-		}
-		input = string(buf[:])
-	} else {
-		data, err := os.read_entire_file(file_path, context.allocator)
-		if err != nil {
-			fmt.eprintfln("error: could not read file: %s", file_path)
-			os.exit(1)
-		}
-		input = string(data)
-	}
-
-	result := format_source(input)
-
-	if write_back && !read_from_stdin {
-		werr := os.write_entire_file(file_path, transmute([]u8)result)
-		if werr != nil {
-			fmt.eprintfln("error: could not write file: %s", file_path)
-			os.exit(1)
-		}
-	} else {
-		fmt.print(result)
-	}
+	
+	return strings.to_string(sb_out)
 }
