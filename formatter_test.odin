@@ -528,6 +528,77 @@ lala :: proc() {
 
 	}
 
+	check_format(t, cases)
+}
+
+@(test)
+test_crlf_normalization :: proc(t: ^testing.T) {
+	input := "main :: proc() {\r\nx := 1\r\n}\r\n"
+	expected := "main :: proc() {\n\tx := 1\n}\n"
+	result := format_source(input)
+
+	if result != expected {
+		fmt.printfln("FAIL: crlf normalization")
+		fmt.printfln("  expected: %q", expected)
+		fmt.printfln("  got:      %q", result)
+		testing.fail(t)
+	}
+}
+
+@(test)
+test_handmade :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		{
+			name = "crlf",
+			input = "main :: proc() {\r\nx := 1\r\n}\r\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n"
+		},
+		{
+			name = "readme example",
+			input = ```
+
+main :: proc() 
+{
+
+/*
+  hello
+  odd multi line comment here
+  spaces and tabs
+*/
+
+	when ODIN_DEBUG 
+	{
+		fmt.println(
+"hello",
+"world"
+		)
+	}
+}
+```,
+			expected = ```
+
+main :: proc() {
+
+/*
+ hello
+ odd multi line comment here
+ spaces and tabs
+*/
+
+	when ODIN_DEBUG {
+	fmt.println(
+		"hello",
+		"world"
+	)
+	}
+}
+```
+		},
+	}
+	check_format(t, cases)
+}
+
+check_format :: proc(t: ^testing.T, cases: []Test_Case) {
 	for tc in cases {
 		result := format_source(tc.input)
 		defer delete(result)
@@ -536,22 +607,18 @@ lala :: proc() {
 			sb := strings.builder_make_none()
 			defer strings.builder_destroy(&sb)
 
-			res_lines := strings.split_lines(result)
-			expected_lines := strings.split_lines(tc.expected)
+			res_lines := strings.split_lines(result, context.temp_allocator)
+			expected_lines := strings.split_lines(tc.expected, context.temp_allocator)
 
 			fmt.sbprintln(&sb,"FAIL: ", tc.name)
 
 			for line, i in res_lines {
 				if line != expected_lines[i] {
-
-					// you are here;
-					expected_lines[i] = strings.concatenate({expected_lines[i], " <-- DISCREPANCY"})
-					res_lines[i] = strings.concatenate({res_lines[i], " <-- DISCREPANCY"})
-
+					expected_lines[i] = strings.concatenate({expected_lines[i], " <-- DISCREPANCY"}, context.temp_allocator)
+					res_lines[i] = strings.concatenate({res_lines[i], " <-- DISCREPANCY"}, context.temp_allocator)
 				}
 			}
 
-			// expected
 			fmt.sbprintfln(&sb,"==== Expected: ")
 			for line in expected_lines {
 				fmt.sbprintfln(&sb,"%v", line)
@@ -566,20 +633,6 @@ lala :: proc() {
 
 			testing.fail(t)
 		}
-	}
-}
-
-@(test)
-test_crlf_normalization :: proc(t: ^testing.T) {
-	input := "main :: proc() {\r\nx := 1\r\n}\r\n"
-	expected := "main :: proc() {\n\tx := 1\n}\n"
-	result := format_source(input)
-
-	if result != expected {
-		fmt.printfln("FAIL: crlf normalization")
-		fmt.printfln("  expected: %q", expected)
-		fmt.printfln("  got:      %q", result)
-		testing.fail(t)
 	}
 }
 
