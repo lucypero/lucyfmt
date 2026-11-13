@@ -7,4 +7,12 @@
     "label": "build opt",
     "command": "odin build . -o:speed -vet"
   },
+  {
+    "label": "test handmade",
+    "command": "odin test . -define:ODIN_TEST_NAMES=test_handmade -debug",
+  },
+  {
+    "label": "build test handmade",
+    "command": "odin build . -build-mode:test -define:ODIN_TEST_NAMES=test_handmade -debug",
+  },
 ]

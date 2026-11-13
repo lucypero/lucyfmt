@@ -613,6 +613,8 @@ check_format :: proc(t: ^testing.T, cases: []Test_Case) {
 			fmt.sbprintln(&sb,"FAIL: ", tc.name)
 
 			for line, i in res_lines {
+				if i >= len(expected_lines) do break
+				
 				if line != expected_lines[i] {
 					expected_lines[i] = strings.concatenate({expected_lines[i], " <-- DISCREPANCY"}, context.temp_allocator)
 					res_lines[i] = strings.concatenate({res_lines[i], " <-- DISCREPANCY"}, context.temp_allocator)
