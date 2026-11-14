@@ -1,4 +1,10 @@
-# TODO
+# TODO `handmade` branch
+
+- [x] Basic indentation
+- [ ] Write back spaces.
+- [ ] Put opening braces on the same line as the related head statement (proc, etc)
+
+# TODO `main` branch
 
 ## Case 1
 

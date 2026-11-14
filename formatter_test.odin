@@ -474,6 +474,11 @@ lala :: proc() {
 			input    = "V :: union #no_nil\n{\nint,\nf32,\n}\n",
 			expected = "V :: union #no_nil {\n\tint,\n\tf32,\n}\n",
 		},
+		{
+			name = "basic",
+			input = "main :: proc() {\r\nx := 1\r\n}\r\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n"
+		},
 		// 44. struct with directive still cuddled
 		{
 			name     = "cuddle struct with directive",
@@ -529,20 +534,6 @@ lala :: proc() {
 	}
 
 	check_format(t, cases)
-}
-
-@(test)
-test_crlf_normalization :: proc(t: ^testing.T) {
-	input := "main :: proc() {\r\nx := 1\r\n}\r\n"
-	expected := "main :: proc() {\n\tx := 1\n}\n"
-	result := format_source(input)
-
-	if result != expected {
-		fmt.printfln("FAIL: crlf normalization")
-		fmt.printfln("  expected: %q", expected)
-		fmt.printfln("  got:      %q", result)
-		testing.fail(t)
-	}
 }
 
 @(test)
@@ -602,23 +593,38 @@ check_format :: proc(t: ^testing.T, cases: []Test_Case) {
 	for tc in cases {
 		result := format_source(tc.input)
 		defer delete(result)
+		defer free_all(context.temp_allocator)
 
 		if result != tc.expected {
 			sb := strings.builder_make_none()
 			defer strings.builder_destroy(&sb)
 
-			res_lines := strings.split_lines(result, context.temp_allocator)
-			expected_lines := strings.split_lines(tc.expected, context.temp_allocator)
+			res_lines := strings.split(result, "\n", context.temp_allocator)
+			expected_lines := strings.split(tc.expected, "\n", context.temp_allocator)
 
-			fmt.sbprintln(&sb,"FAIL: ", tc.name)
+			for &line in expected_lines {
+				line = make_whitespace_visible(line)
+			}
+			
+			for &line in res_lines {
+				line = make_whitespace_visible(line)
+			}
 
-			for line, i in res_lines {
-				if i >= len(expected_lines) do break
-				
-				if line != expected_lines[i] {
+			fmt.sbprintln(&sb,"FAIL test case:", tc.name)
+
+			common := min(len(res_lines), len(expected_lines))
+			for i in 0..<common {
+				if res_lines[i] != expected_lines[i] {
 					expected_lines[i] = strings.concatenate({expected_lines[i], " <-- DISCREPANCY"}, context.temp_allocator)
 					res_lines[i] = strings.concatenate({res_lines[i], " <-- DISCREPANCY"}, context.temp_allocator)
 				}
+			}
+			
+			for i in common..<len(expected_lines) {
+				expected_lines[i] = strings.concatenate({expected_lines[i], " <-- MISSING FROM OUTPUT"}, context.temp_allocator)
+			}
+			for i in common..<len(res_lines) {
+				res_lines[i] = strings.concatenate({res_lines[i], " <-- EXTRA IN OUTPUT"}, context.temp_allocator)
 			}
 
 			fmt.sbprintfln(&sb,"==== Expected: ")
@@ -632,23 +638,21 @@ check_format :: proc(t: ^testing.T, cases: []Test_Case) {
 			}
 
 			log.error(strings.to_string(sb))
-
-			testing.fail(t)
 		}
 	}
 }
 
 make_whitespace_visible :: proc(str: string) -> string {
-
 	str := str
-
-	sb := strings.builder_make_none()
+	sb := strings.builder_make_none(context.temp_allocator)
 	strings.write_string(&sb, str)
-	strings.builder_replace_all(&sb, "\t", "[TAB]")
+	strings.builder_replace_all(&sb, "\t", "[T]")
+	strings.builder_replace_all(&sb, " ", "[S]")
+	strings.builder_replace_all(&sb, "\v", "[V]")
+	strings.builder_replace_all(&sb, "\f", "[F]")
+	strings.builder_replace_all(&sb, "\r", "[R]")
+	strings.builder_replace_all(&sb, "\n", "[N]")
 	strings.write_string(&sb, "[END]")
-
-
 	// str, did_allocate = strings.replace_all(str, " ", "[TAB]")
-
 	return strings.to_string(sb)
 }

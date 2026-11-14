@@ -1,6 +1,10 @@
 [
   {
     "label": "test",
+    "command": "odin test . -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_LOG_LEVEL=error",
+  },
+  {
+    "label": "test vet",
     "command": "odin test . -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_LOG_LEVEL=error -vet",
   },
   {
@@ -14,5 +18,9 @@
   {
     "label": "build test handmade",
     "command": "odin build . -build-mode:test -define:ODIN_TEST_NAMES=test_handmade -debug",
+  },
+  {
+    "label": "build test",
+    "command": "odin build . -build-mode:test -debug",
   },
 ]
