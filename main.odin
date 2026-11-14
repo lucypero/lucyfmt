@@ -1,12 +1,7 @@
 package lucyfmt
 
-import "core:io"
 import "core:strings"
 import "core:fmt"
-
-main :: proc() {
-
-}
 
 format_source :: proc(input: string) -> string {
 	sb_out := strings.builder_make()
@@ -21,7 +16,7 @@ format_source :: proc(input: string) -> string {
 	return strings.to_string(sb_out)
 }
 
-TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF}
+TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF, Other}
 
 Token :: struct {
 	kind: TokenType,
@@ -38,63 +33,62 @@ read :: proc(t: ^Tokenizer) -> byte {
 	return t.src[t.pos-1]
 }
 
+peek :: proc(t: ^Tokenizer) -> byte {
+	return t.src[t.pos]
+}
+
 scan :: proc(t: ^Tokenizer) -> Token {
 	for {
+		if t.pos >= len(t.src) do break
 		start_pos := t.pos
-		
-		if t.pos >= len(t.src) - 1 do return {.EOF, ""}
-		cur_r := read(t)
-		one_rune_str := t.src[t.pos-1:t.pos]
-		
-		switch {
-		case is_letter(cur_r):
-			return scan_word(t)
-		case cur_r == '(': 
-			return {.OpenParens, one_rune_str}
-		case cur_r == ')': 
-			return {.CloseParens, one_rune_str}
-		case cur_r == '{': 
-			return {.OpenBrace, one_rune_str}
-		case cur_r == '}': 
-			return {.CloseBrace, one_rune_str}
-		case cur_r == '\n': 
-			return {.NewLine, one_rune_str}
+		current_char := peek(t)
+
+		// Scanning single character tokens
+		if kind, ok := get_single_char_token(current_char); ok {
+			t.pos += 1
+			return Token {kind, t.src[start_pos:t.pos]}
 		}
 
-		for {
-			// keep reading until starts_token() and return an Other token
+		// Scanning word
+		if is_letter(current_char) {
+			for t.pos < len(t.src) && is_alphanumeric(peek(t)) do t.pos +=1
+			return Token {.Word, t.src[start_pos:t.pos]}
 		}
+
+		// Constructing Other token
+		for t.pos < len(t.src) && !starts_token(peek(t)) do t.pos += 1
+		return Token {.Other, t.src[start_pos:t.pos]}
 	}
 
-	return {.EOF, ""}
+	return Token {.EOF, ""}
 }
 
-scan_word :: proc(t: ^Tokenizer) -> Token {
-	word_start := t.pos - 1
-	
-	for {
-		if t.pos >= len(t.src) - 1 do return {.EOF, ""}
-		if !is_alpha(read(t)) {
-			t.pos -= 1
-			return {.Word, t.src[word_start:t.pos]}
-		}
+starts_token :: proc(character: u8) -> bool {
+	_, is_single_char_token := get_single_char_token(character)
+	return is_letter(character) || is_single_char_token
+}
+
+is_alphanumeric :: proc(character: u8) -> bool {
+	switch character {
+	case 'a'..='z', 'A'..='Z', '0'..='9', '_': return true
+	case: return false
 	}
 }
 
-is_alpha :: proc(r: u8) -> bool {
-	switch r {
+is_letter :: proc(character: u8) -> bool {
+	switch character {
 	case 'a'..='z', 'A'..='Z': return true
-	case '1'..='9': return true
+	case: return false
 	}
-
-	return false
 }
 
-is_letter :: proc(r: u8) -> bool {
-	switch r {
-	case 'a'..='z', 'A'..='Z': return true
+get_single_char_token :: proc(character: u8) -> (TokenType, bool) {
+	switch character {
+	case '(': return .OpenParens, true
+	case ')': return .CloseParens, true
+	case '{': return .OpenBrace, true
+	case '}': return .CloseBrace, true
+	case '\n': return .NewLine, true
+	case: return .Other, false
 	}
-
-	return false
-	
 }
