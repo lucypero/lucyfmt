@@ -17,7 +17,7 @@
   },
   {
     "label": "test one thing",
-    "command": "odin test . -debug -define:ODIN_TEST_NAMES=test_comments -define:ODIN_TEST_LOG_LEVEL=error",
+    "command": "odin test . -debug -define:ODIN_TEST_NAMES=test_strings -define:ODIN_TEST_LOG_LEVEL=error",
     "shell": {"program": "nu"}
   },
 ]

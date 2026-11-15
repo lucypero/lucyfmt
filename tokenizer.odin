@@ -3,7 +3,7 @@ package lucyfmt
 import "core:strings"
 import "core:fmt"
 
-TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF, Whitespace, Other, SingleLineComment}
+TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF, Whitespace, Other, SingleLineComment, MultiLineComment}
 
 Token :: struct {
 	kind: TokenType,
@@ -24,9 +24,14 @@ peek :: proc(t: ^Tokenizer) -> byte {
 	return t.src[t.pos]
 }
 
-peek_ahead_is :: proc(t: ^Tokenizer, look_ahead_by: int, char_is: u8) -> bool {
-	ind_to_look := t.pos + look_ahead_by
-	return ind_to_look < len(t.src) && t.src[ind_to_look] == char_is
+peek_is :: proc{peek_is_char, peek_is_substr}
+
+peek_is_char :: proc(t: ^Tokenizer, character: u8) -> bool {
+	return peek(t) == character
+}
+
+peek_is_substr :: proc(t: ^Tokenizer, substr: string) -> bool {
+	return strings.starts_with(t.src[t.pos:], substr)
 }
 
 scan :: proc(t: ^Tokenizer) -> Token {
@@ -41,11 +46,14 @@ scan :: proc(t: ^Tokenizer) -> Token {
 		case .OpenParens, .CloseParens, .OpenBrace, .CloseBrace, .NewLine:
 			t.pos += 1
 		case .Word:
-			for t.pos < len(t.src) && is_alphanumeric(peek(t)) do t.pos +=1
+			for t.pos < len(t.src) && is_alphanumeric(peek(t)) do t.pos += 1
 		case .SingleLineComment:
-			for t.pos < len(t.src) && peek(t) != '\n' do t.pos +=1
+			for t.pos < len(t.src) && peek(t) != '\n' do t.pos += 1
+		case .MultiLineComment:
+			for t.pos < len(t.src) && !peek_is(t, "*/") do t.pos += 1
+			t.pos += 2 // Skipping the closing */
 		case .Whitespace:
-			for t.pos < len(t.src) && is_whitespace(peek(t)) do t.pos +=1
+			for t.pos < len(t.src) && is_whitespace(peek(t)) do t.pos += 1
 		case .Other:
 			for t.pos < len(t.src) && classify_next_token(t) == .Other do t.pos += 1
 		case .EOF:
@@ -61,7 +69,8 @@ classify_next_token :: proc(t: ^Tokenizer) -> TokenType {
 	character := peek(t)
 	if kind, ok := get_single_char_token(character); ok do return kind
 	if is_whitespace(character) do return .Whitespace
-	if character == '/' && peek_ahead_is(t, 1, '/') do return .SingleLineComment
+	if peek_is(t, "//") do return .SingleLineComment
+	if peek_is(t, "/*") do return .MultiLineComment
 	if is_letter(character) do return .Word
 	return .Other
 }

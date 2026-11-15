@@ -3,7 +3,7 @@
 ## Code TODO
 
 - [ ] Pack more information in the tokenizer so the processing is simpler.
-- [ ] Strings and comments as just One token.
+- [x] Strings and comments as just One token.
 - [x] Pre-scan all tokens before processing.
 
 ## Features TODO
