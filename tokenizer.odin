@@ -3,7 +3,7 @@ package lucyfmt
 import "core:strings"
 import "core:fmt"
 
-TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF, Whitespace, Other, SingleLineComment, MultiLineComment}
+TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF, Whitespace, Other, SingleLineComment, MultiLineComment, StringQuote, StringBacktick, Character}
 
 Token :: struct {
 	kind: TokenType,
@@ -40,6 +40,7 @@ scan :: proc(t: ^Tokenizer) -> Token {
 		
 		start_pos := t.pos
 		current_char := peek(t)
+		
 		next_token := classify_next_token(t)
 		
 		switch next_token {
@@ -50,10 +51,19 @@ scan :: proc(t: ^Tokenizer) -> Token {
 		case .SingleLineComment:
 			for t.pos < len(t.src) && peek(t) != '\n' do t.pos += 1
 		case .MultiLineComment:
+			t.pos += 2
 			for t.pos < len(t.src) && !peek_is(t, "*/") do t.pos += 1
-			t.pos += 2 // Skipping the closing */
+			t.pos += 2 // Skipping the closing `*/`
 		case .Whitespace:
 			for t.pos < len(t.src) && is_whitespace(peek(t)) do t.pos += 1
+		case .StringQuote:
+			scan_quoted_escaping(t, '"')
+		case .StringBacktick:
+			t.pos += 1
+			for t.pos < len(t.src) && peek(t) != '`' do t.pos += 1
+			t.pos += 1
+		case .Character:
+			scan_quoted_escaping(t, '\'')
 		case .Other:
 			for t.pos < len(t.src) && classify_next_token(t) == .Other do t.pos += 1
 		case .EOF:
@@ -65,6 +75,20 @@ scan :: proc(t: ^Tokenizer) -> Token {
 	return Token {.EOF, ""}
 }
 
+// Scans quoted strings of text (like "a string" and 'a' character), while escaping anything after a `\`
+scan_quoted_escaping :: proc(t: ^Tokenizer, quote: u8) {
+	t.pos += 1
+	for t.pos < len(t.src) {
+		character := read(t)
+		// Ignore escaped characters
+		if character == '\\' {
+			if t.pos < len(t.src) do t.pos += 1
+			continue
+		}
+		if character == quote do break
+	}
+}
+
 classify_next_token :: proc(t: ^Tokenizer) -> TokenType {
 	character := peek(t)
 	if kind, ok := get_single_char_token(character); ok do return kind
@@ -72,6 +96,9 @@ classify_next_token :: proc(t: ^Tokenizer) -> TokenType {
 	if peek_is(t, "//") do return .SingleLineComment
 	if peek_is(t, "/*") do return .MultiLineComment
 	if is_letter(character) do return .Word
+	if character == '"' do return .StringQuote
+	if character == '`' do return .StringBacktick
+	if character == '\'' do return .Character
 	return .Other
 }
 
