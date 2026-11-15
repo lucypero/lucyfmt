@@ -3,7 +3,7 @@ package lucyfmt
 import "core:strings"
 import "core:fmt"
 
-TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF, Whitespace, Other, Comment}
+TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF, Whitespace, Other, SingleLineComment}
 
 Token :: struct {
 	kind: TokenType,
@@ -22,6 +22,11 @@ read :: proc(t: ^Tokenizer) -> byte {
 
 peek :: proc(t: ^Tokenizer) -> byte {
 	return t.src[t.pos]
+}
+
+peek_ahead_is :: proc(t: ^Tokenizer, look_ahead_by: int, char_is: u8) -> bool {
+	ind_to_look := t.pos + look_ahead_by
+	return ind_to_look < len(t.src) && t.src[ind_to_look] == char_is
 }
 
 scan :: proc(t: ^Tokenizer) -> Token {
@@ -43,6 +48,12 @@ scan :: proc(t: ^Tokenizer) -> Token {
 			return Token {.Whitespace, t.src[start_pos:t.pos]}
 		}
 
+		// Scanning single line comment
+		if current_char == '/' && peek_ahead_is(t, 1, '/') {
+			for t.pos < len(t.src) && peek(t) != '\n' do t.pos +=1
+			return Token {.SingleLineComment, t.src[start_pos:t.pos]}
+		}
+
 		// Scanning word
 		if is_letter(current_char) {
 			for t.pos < len(t.src) && is_alphanumeric(peek(t)) do t.pos +=1
@@ -50,16 +61,19 @@ scan :: proc(t: ^Tokenizer) -> Token {
 		}
 
 		// Constructing Other token
-		for t.pos < len(t.src) && !starts_token(peek(t)) do t.pos += 1
+		for t.pos < len(t.src) && !starts_token(t) do t.pos += 1
 		return Token {.Other, t.src[start_pos:t.pos]}
 	}
 
 	return Token {.EOF, ""}
 }
 
-starts_token :: proc(character: u8) -> bool {
+starts_token :: proc(t: ^Tokenizer) -> bool {
+	// TODO(lucy): how do we make sure that we're not scanning a comment here? (it has to look ahead?)
+	character := peek(t)
 	_, is_single_char_token := get_single_char_token(character)
-	return is_letter(character) || is_single_char_token || is_whitespace(character)
+	is_single_line_comment := character == '/' && peek_ahead_is(t, 1, '/')
+	return is_letter(character) || is_single_char_token || is_whitespace(character) || is_single_line_comment
 }
 
 is_alphanumeric :: proc(character: u8) -> bool {

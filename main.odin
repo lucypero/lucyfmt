@@ -7,7 +7,7 @@ format_source :: proc(input: string) -> string {
 	sb_out := strings.builder_make_len_cap(0, len(input))
 	t := Tokenizer {input, 0}
 
-	indentation_pending := false
+	indentation_pending := true
 	current_indentation_level := 0
 
 	tokens := make([dynamic]Token, 0, 20, context.temp_allocator)
@@ -19,11 +19,11 @@ format_source :: proc(input: string) -> string {
 		if tok.kind == .EOF do break
 	}
 
-	for tok in tokens {
+	outer: for tok in tokens {
 
 		if indentation_pending {
 			// skip whitespace at start of line
-			for tok.kind == .Whitespace do continue
+			for tok.kind == .Whitespace do continue outer
 		}
 		
 		#partial switch tok.kind {

@@ -5,6 +5,8 @@ import "core:testing"
 import "core:fmt"
 import "core:log"
 
+MAKE_WHITESPACE_VISIBLE :: false
+
 Test_Case :: struct {
 	name:     string,
 	input:    string,
@@ -807,12 +809,14 @@ check_format :: proc(t: ^testing.T, cases: []Test_Case) {
 			res_lines := strings.split(result, "\n", context.temp_allocator)
 			expected_lines := strings.split(tc.expected, "\n", context.temp_allocator)
 
-			for &line in expected_lines {
-				line = make_whitespace_visible(line)
-			}
-			
-			for &line in res_lines {
-				line = make_whitespace_visible(line)
+			when MAKE_WHITESPACE_VISIBLE {
+				for &line in expected_lines {
+					line = make_whitespace_visible(line)
+				}
+				
+				for &line in res_lines {
+					line = make_whitespace_visible(line)
+				}
 			}
 
 			fmt.sbprintln(&sb,"FAIL test case:", tc.name)

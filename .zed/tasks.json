@@ -12,15 +12,12 @@
     "command": "odin build . -o:speed -vet"
   },
   {
-    "label": "test handmade",
-    "command": "odin test . -define:ODIN_TEST_NAMES=test_handmade -debug",
-  },
-  {
-    "label": "build test handmade",
-    "command": "odin build . -build-mode:test -define:ODIN_TEST_NAMES=test_handmade -debug",
-  },
-  {
     "label": "build test",
     "command": "odin build . -build-mode:test -debug",
+  },
+  {
+    "label": "test one thing",
+    "command": "odin test . -debug -define:ODIN_TEST_NAMES=test_comments -define:ODIN_TEST_LOG_LEVEL=error",
+    "shell": {"program": "nu"}
   },
 ]
