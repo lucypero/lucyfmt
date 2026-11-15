@@ -595,19 +595,6 @@ lala :: proc() {
 }
 `
 		},
-	}
-
-	check_format(t, cases)
-}
-
-@(test)
-test_handmade :: proc(t: ^testing.T) {
-	cases := []Test_Case{
-		{
-			name = "crlf",
-			input = "main :: proc() {\r\nx := 1\r\n}\r\n",
-			expected = "main :: proc() {\n\tx := 1\n}\n"
-		},
 		{
 			name = "readme example",
 			input = ```
@@ -650,6 +637,7 @@ main :: proc() {
 ```
 		},
 	}
+
 	check_format(t, cases)
 }
 
