@@ -745,9 +745,9 @@ main :: proc()
 main :: proc() {
 
 /*
- hello
- odd multi line comment here
- spaces and tabs
+  hello
+  odd multi line comment here
+  spaces and tabs
 */
 
 	when ODIN_DEBUG {
