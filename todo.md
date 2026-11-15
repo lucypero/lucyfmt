@@ -1,5 +1,13 @@
 # TODO `handmade` branch
 
+## Code TODO
+
+- [ ] Pack more information in the tokenizer so the processing is simpler.
+- [ ] Strings and comments as just One token.
+- [ ] Pre-scan all tokens before processing.
+
+## Features TODO
+
 - [x] Basic indentation
 - [ ] Write back spaces.
 - [ ] Put opening braces on the same line as the related head statement (proc, etc)
