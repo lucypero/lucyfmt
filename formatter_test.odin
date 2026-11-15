@@ -51,6 +51,57 @@ test_basic :: proc(t: ^testing.T) {
 			input = "main :: proc() {\r\nx := 1\r\n}\r\n",
 			expected = "main :: proc() {\n\tx := 1\n}\n"
 		},
+		// Compound literal with empty braces on their own lines
+		{
+			name     = "compound literal with empty braces",
+			input    = "g_map = {\ng_map.arena,\nv2{1, 1},\nmap_size,\n{},\n{},\n}\n",
+			expected = "g_map = {\n\tg_map.arena,\n\tv2{1, 1},\n\tmap_size,\n\t{},\n\t{},\n}\n",
+		},
+	}
+
+	check_format(t, cases)
+}
+
+// Unusual input: empty files, missing newlines, unbalanced braces.
+@(test)
+test_edge_cases :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// Empty file stays empty
+		{
+			name     = "empty file",
+			input    = "",
+			expected = "",
+		},
+		// File with only blank lines
+		{
+			name     = "only blank lines",
+			input    = "\n\n",
+			expected = "\n\n",
+		},
+		// Missing trailing newline gets one added
+		{
+			name     = "no trailing newline",
+			input    = "main :: proc() {\nx := 1\n}",
+			expected = "main :: proc() {\n\tx := 1\n}\n",
+		},
+		// File with only comments is untouched
+		{
+			name     = "only comments",
+			input    = "// line comment\n/* block\n   comment */\n",
+			expected = "// line comment\n/* block\n   comment */\n",
+		},
+		// Extra closing braces clamp indentation at zero instead of going negative
+		{
+			name     = "too many closing braces",
+			input    = "}\n}\nx := 1\n",
+			expected = "}\n}\nx := 1\n",
+		},
+		// Unclosed brace still indents what follows
+		{
+			name     = "unclosed brace",
+			input    = "main :: proc() {\nx := 1\n",
+			expected = "main :: proc() {\n\tx := 1\n",
+		},
 	}
 
 	check_format(t, cases)
@@ -161,6 +212,30 @@ test_comments :: proc(t: ^testing.T) {
 			name     = "multi-line comment preserved",
 			input    = "/* multi\nline comment */\nif true {\nx := 1\n}\n",
 			expected = "/* multi\nline comment */\nif true {\n\tx := 1\n}\n",
+		},
+		// Brace in a trailing line comment after code is ignored
+		{
+			name     = "brace in trailing line comment",
+			input    = "x := 1 // {\nif true {\ny := 1\n}\n",
+			expected = "x := 1 // {\nif true {\n\ty := 1\n}\n",
+		},
+		// Multi-line comment starting mid-line: braces ignored, inner lines untouched
+		{
+			name     = "multi-line comment starting mid-line",
+			input    = "x := 1 /* {\n} */\nif true {\ny := 1\n}\n",
+			expected = "x := 1 /* {\n} */\nif true {\n\ty := 1\n}\n",
+		},
+		// Inline block comment containing a brace
+		{
+			name     = "inline block comment with brace",
+			input    = "main :: proc() {\nx := /* } */ 1\n}\n",
+			expected = "main :: proc() {\n\tx := /* } */ 1\n}\n",
+		},
+		// Comment lines inside a block are indented like code
+		{
+			name     = "comment inside block indented",
+			input    = "main :: proc() {\n// note\nx := 1\n}\n",
+			expected = "main :: proc() {\n\t// note\n\tx := 1\n}\n",
 		},
 	}
 
@@ -330,6 +405,24 @@ main :: proc() {
 	)
 }
 `
+		},
+		// Brackets broken across lines indent like parens
+		{
+			name     = "bracket indentation",
+			input    = "arr[\ni + 1\n] = 2\n",
+			expected = "arr[\n\ti + 1\n] = 2\n",
+		},
+		// Brackets closed on the same line (types) do not affect indentation
+		{
+			name     = "brackets in types",
+			input    = "m := map[string][]int{\n\"a\" = nil,\n}\n",
+			expected = "m := map[string][]int{\n\t\"a\" = nil,\n}\n",
+		},
+		// Multi-line array literal
+		{
+			name     = "multi-line array literal",
+			input    = "x := [3]int{\n1,\n2,\n3,\n}\n",
+			expected = "x := [3]int{\n\t1,\n\t2,\n\t3,\n}\n",
 		},
 	}
 
@@ -559,6 +652,36 @@ lala :: proc() {
 }
 `
 		},
+		// Plain switch, case with several statements
+		{
+			name     = "plain switch multiple statements",
+			input    = "switch x {\ncase 1:\na()\nb()\ncase 2:\nc()\n}\n",
+			expected = "switch x {\ncase 1:\n\ta()\n\tb()\ncase 2:\n\tc()\n}\n",
+		},
+		// Switch without a condition
+		{
+			name     = "switch without condition",
+			input    = "switch {\ncase x > 1:\na()\ncase:\nb()\n}\n",
+			expected = "switch {\ncase x > 1:\n\ta()\ncase:\n\tb()\n}\n",
+		},
+		// Type switch
+		{
+			name     = "type switch",
+			input    = "switch v in val {\ncase int:\na()\ncase:\nb()\n}\n",
+			expected = "switch v in val {\ncase int:\n\ta()\ncase:\n\tb()\n}\n",
+		},
+		// fallthrough is indented like any statement in a case body
+		{
+			name     = "fallthrough",
+			input    = "switch x {\ncase 1:\nfallthrough\ncase 2:\ny()\n}\n",
+			expected = "switch x {\ncase 1:\n\tfallthrough\ncase 2:\n\ty()\n}\n",
+		},
+		// Switch nested inside a case body
+		{
+			name     = "nested switch",
+			input    = "switch a {\ncase 1:\nswitch b {\ncase 2:\nx()\n}\ncase 3:\ny()\n}\n",
+			expected = "switch a {\ncase 1:\n\tswitch b {\n\tcase 2:\n\t\tx()\n\t}\ncase 3:\n\ty()\n}\n",
+		},
 	}
 
 	check_format(t, cases)
@@ -635,6 +758,36 @@ main :: proc() {
 	}
 }
 ```
+		},
+		// Nested when blocks: neither body is indented
+		{
+			name     = "nested when",
+			input    = "when A {\nwhen B {\nx := 1\n}\n}\n",
+			expected = "when A {\nwhen B {\nx := 1\n}\n}\n",
+		},
+		// when inside a proc keeps the proc's indentation
+		{
+			name     = "when inside proc",
+			input    = "main :: proc() {\nwhen A {\nx := 1\n}\n}\n",
+			expected = "main :: proc() {\n\twhen A {\n\tx := 1\n\t}\n}\n",
+		},
+		// if inside a when is still indented
+		{
+			name     = "if inside when",
+			input    = "when A {\nif b {\nx := 1\n}\n}\n",
+			expected = "when A {\nif b {\n\tx := 1\n}\n}\n",
+		},
+		// Identifier containing `when` is not treated as a when block
+		{
+			name     = "identifier containing when",
+			input    = "main :: proc() {\nif result.when_detected {\nx := 1\n} else {\ny := 2\n}\n}\n",
+			expected = "main :: proc() {\n\tif result.when_detected {\n\t\tx := 1\n\t} else {\n\t\ty := 2\n\t}\n}\n",
+		},
+		// `when` inside a string is not treated as a when block
+		{
+			name     = "when inside string",
+			input    = "x := \"when\"\nif true {\ny := 1\n}\n",
+			expected = "x := \"when\"\nif true {\n\ty := 1\n}\n",
 		},
 	}
 
