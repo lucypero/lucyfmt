@@ -11,118 +11,179 @@ Test_Case :: struct {
 	expected: string,
 }
 
+// Simple block indentation, blank lines, idempotency, line endings.
 @(test)
-test_format :: proc(t: ^testing.T) {
-cases := []Test_Case{
-		// 1. Basic indent
+test_basic :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// Basic indent
 		{
 			name     = "basic indent",
 			input    = "main :: proc() {\nx := 1\n}\n",
 			expected = "main :: proc() {\n\tx := 1\n}\n",
 		},
-		// 2. Nested blocks
+		// Nested blocks
 		{
 			name     = "nested blocks",
 			input    = "outer :: proc() {\nif true {\nx := 1\n}\n}\n",
 			expected = "outer :: proc() {\n\tif true {\n\t\tx := 1\n\t}\n}\n",
 		},
-		// 3. Braces in strings ignored
-		{
-			name     = "braces in strings",
-			input    = "x := \"}\"\nif true {\ny := 1\n}\n",
-			expected = "x := \"}\"\nif true {\n\ty := 1\n}\n",
-		},
-		// 4. Braces in single-line comments ignored
-		{
-			name     = "braces in comments",
-			input    = "// {\nif true {\nx := 1\n}\n",
-			expected = "// {\nif true {\n\tx := 1\n}\n",
-		},
-		// 5. Braces in multi-line comments ignored
-		{
-			name     = "braces in multi-line comments",
-			input    = "/* { */\nif true {\nx := 1\n}\n",
-			expected = "/* { */\nif true {\n\tx := 1\n}\n",
-		},
-		// 6. Nested multi-line comments
-		{
-			name     = "nested multi-line comments",
-			input    = "/* /* { */ */\nif true {\nx := 1\n}\n",
-			expected = "/* /* { */ */\nif true {\n\tx := 1\n}\n",
-		},
-		// 7. Braces in raw strings ignored
-		{
-			name     = "braces in raw strings",
-			input    = "x := `}`\nif true {\ny := 1\n}\n",
-			expected = "x := `}`\nif true {\n\ty := 1\n}\n",
-		},
-		// 8. Braces in char literals ignored
-		{
-			name     = "braces in char literals",
-			input    = "x := '}'\nif true {\ny := 1\n}\n",
-			expected = "x := '}'\nif true {\n\ty := 1\n}\n",
-		},
-		// 9. Empty lines preserved
+		// Empty lines preserved
 		{
 			name     = "empty lines preserved",
 			input    = "a :: proc() {\n\nx := 1\n\n}\n",
 			expected = "a :: proc() {\n\n\tx := 1\n\n}\n",
 		},
-		// 10. } else { pattern
-		{
-			name     = "close-open pattern",
-			input    = "if true {\nx := 1\n} else {\ny := 2\n}\n",
-			expected = "if true {\n\tx := 1\n} else {\n\ty := 2\n}\n",
-		},
-		// 11. Idempotency
+		// Idempotency
 		{
 			name     = "idempotency",
 			input    = "main :: proc() {\n\tx := 1\n}\n",
 			expected = "main :: proc() {\n\tx := 1\n}\n",
 		},
-		// 12. Escaped quotes in strings
-		{
-			name     = "escaped quotes",
-			input    = "x := \"\\\"}\\\"\"\nif true {\ny := 1\n}\n",
-			expected = "x := \"\\\"}\\\"\"\nif true {\n\ty := 1\n}\n",
-		},
-		// 13. Wrong existing indentation corrected
+		// Wrong existing indentation corrected
 		{
 			name     = "fix wrong indent",
 			input    = "  if true {\n      x := 1\n  }\n",
 			expected = "if true {\n\tx := 1\n}\n",
 		},
-		// 14. Multi-line raw strings
+		// CRLF line endings normalized to LF
+		{
+			name = "basic",
+			input = "main :: proc() {\r\nx := 1\r\n}\r\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n"
+		},
+	}
+
+	check_format(t, cases)
+}
+
+// Strings, raw strings and char literals: braces inside are ignored, contents untouched.
+@(test)
+test_strings :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// Braces in strings ignored
+		{
+			name     = "braces in strings",
+			input    = "x := \"}\"\nif true {\ny := 1\n}\n",
+			expected = "x := \"}\"\nif true {\n\ty := 1\n}\n",
+		},
+		// Braces in raw strings ignored
+		{
+			name     = "braces in raw strings",
+			input    = "x := `}`\nif true {\ny := 1\n}\n",
+			expected = "x := `}`\nif true {\n\ty := 1\n}\n",
+		},
+		// Braces in char literals ignored
+		{
+			name     = "braces in char literals",
+			input    = "x := '}'\nif true {\ny := 1\n}\n",
+			expected = "x := '}'\nif true {\n\ty := 1\n}\n",
+		},
+		// Escaped quotes in strings
+		{
+			name     = "escaped quotes",
+			input    = "x := \"\\\"}\\\"\"\nif true {\ny := 1\n}\n",
+			expected = "x := \"\\\"}\\\"\"\nif true {\n\ty := 1\n}\n",
+		},
+		// Multi-line raw strings
 		{
 			name     = "multi-line raw strings",
 			input    = "x := `hello {\nworld }\n`\nif true {\ny := 1\n}\n",
 			expected = "x := `hello {\nworld }\n`\nif true {\n\ty := 1\n}\n",
 		},
-		// 15. Single-line comment preserved
+		{
+			name     = "multi line tests",
+			input    = `
+
+package main
+
+import "core:fmt"
+
+main :: proc() {
+
+		hello :=  ` + "`" + `lala
+hello hello
+` + "`" + `
+
+
+}
+`,
+			expected = `
+
+package main
+
+import "core:fmt"
+
+main :: proc() {
+
+	hello :=  ` + "`" + `lala
+hello hello
+` + "`" + `
+
+
+}
+`,
+		},
+	}
+
+	check_format(t, cases)
+}
+
+// Single-line, multi-line and nested comments: braces inside are ignored, contents preserved.
+@(test)
+test_comments :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// Braces in single-line comments ignored
+		{
+			name     = "braces in comments",
+			input    = "// {\nif true {\nx := 1\n}\n",
+			expected = "// {\nif true {\n\tx := 1\n}\n",
+		},
+		// Braces in multi-line comments ignored
+		{
+			name     = "braces in multi-line comments",
+			input    = "/* { */\nif true {\nx := 1\n}\n",
+			expected = "/* { */\nif true {\n\tx := 1\n}\n",
+		},
+		// Nested multi-line comments
+		{
+			name     = "nested multi-line comments",
+			input    = "/* /* { */ */\nif true {\nx := 1\n}\n",
+			expected = "/* /* { */ */\nif true {\n\tx := 1\n}\n",
+		},
+		// Single-line comment preserved
 		{
 			name     = "single-line comment preserved",
 			input    = "//   custom comment\nif true {\nx := 1\n}\n",
 			expected = "//   custom comment\nif true {\n\tx := 1\n}\n",
 		},
-		// 16. Multi-line comment preserved
+		// Multi-line comment preserved
 		{
 			name     = "multi-line comment preserved",
 			input    = "/* multi\nline comment */\nif true {\nx := 1\n}\n",
 			expected = "/* multi\nline comment */\nif true {\n\tx := 1\n}\n",
 		},
-		// 17. Paren indentation
+	}
+
+	check_format(t, cases)
+}
+
+// Indentation inside parentheses, alone and mixed with braces.
+@(test)
+test_parens :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// Paren indentation
 		{
 			name     = "paren indentation",
 			input    = "foo(\nbar,\nbaz\n)\n",
 			expected = "foo(\n\tbar,\n\tbaz\n)\n",
 		},
-		// 18. Nested paren indentation
+		// Nested paren indentation
 		{
 			name     = "nested paren indentation",
 			input    = "foo(\nbar,\nbaz(\nqux\n)\n)\n",
 			expected = "foo(\n\tbar,\n\tbaz(\n\t\tqux\n\t)\n)\n",
 		},
-		// 19. Paren + brace indentation
+		// Paren + brace indentation
 		{
 			name     = "paren and brace indentation",
 			input    = "main :: proc() {\nfoo(\nbar\n)\n}\n",
@@ -270,227 +331,195 @@ main :: proc() {
 }
 `
 		},
-		{
-			name     = "multi line tests",
-			input    = `
-
-package main
-
-import "core:fmt"
-
-main :: proc() {
-
-		hello :=  ` + "`" + `lala
-hello hello
-` + "`" + `
-
-
-}
-`,
-			expected = `
-
-package main
-
-import "core:fmt"
-
-main :: proc() {
-
-	hello :=  ` + "`" + `lala
-hello hello
-` + "`" + `
-
-
-}
-`,
-		},
-		{ // TODO: skip when indentation when u implement it
-			name = "when",
-			input = `
-
-lala :: proc() {
-	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
-
-	when ODIN_DEBUG {
-		lprintln("Tracking Allocations...")
 	}
 
-	apple := "table"
+	check_format(t, cases)
 }
-`,
-			expected = `
 
-lala :: proc() {
-	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
-
-	when ODIN_DEBUG {
-	lprintln("Tracking Allocations...")
-	}
-
-	apple := "table"
-}
-`
-		},
-		// 20. Cuddle: proc brace pulled onto the signature line
+// Brace cuddling: a lone opening brace is pulled onto a recognized block header, and left alone everywhere else.
+@(test)
+test_cuddle :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// Cuddle: proc brace pulled onto the signature line
 		{
 			name     = "cuddle proc brace",
 			input    = "main :: proc()\n{\nx := 1\n}\n",
 			expected = "main :: proc() {\n\tx := 1\n}\n",
 		},
-		// 21. Cuddle: struct brace
+		// Cuddle: struct brace
 		{
 			name     = "cuddle struct brace",
 			input    = "Foo :: struct\n{\nx: int,\n}\n",
 			expected = "Foo :: struct {\n\tx: int,\n}\n",
 		},
-		// 22. Cuddle: control-flow brace (every construct)
+		// Cuddle: control-flow brace (every construct)
 		{
 			name     = "cuddle if brace",
 			input    = "if true\n{\nx := 1\n}\n",
 			expected = "if true {\n\tx := 1\n}\n",
 		},
-		// 23. Cuddle: intervening blank lines are removed
+		// Cuddle: intervening blank lines are removed
 		{
 			name     = "cuddle skips blank lines",
 			input    = "main :: proc()\n\n\n{\nx := 1\n}\n",
 			expected = "main :: proc() {\n\tx := 1\n}\n",
 		},
-		// 24. Cuddle: split signature, brace onto the lone close paren
+		// Cuddle: split signature, brace onto the lone close paren
 		{
 			name     = "cuddle split signature",
 			input    = "foo :: proc(\na: int,\nb: int,\n)\n{\nx := 1\n}\n",
 			expected = "foo :: proc(\n\ta: int,\n\tb: int,\n) {\n\tx := 1\n}\n",
 		},
-		// 25. Cuddle: bail when a comment sits between definition and brace
+		// Cuddle: bail when a comment sits between definition and brace
 		{
 			name     = "cuddle bails on comment gap",
 			input    = "main :: proc()\n// note\n{\nx := 1\n}\n",
 			expected = "main :: proc()\n// note\n{\n\tx := 1\n}\n",
 		},
-		// 26. Cuddle: trailing comment on the brace line is carried along
+		// Cuddle: trailing comment on the brace line is carried along
 		{
 			name     = "cuddle carries trailing comment",
 			input    = "main :: proc()\n{ // open\nx := 1\n}\n",
 			expected = "main :: proc() { // open\n\tx := 1\n}\n",
 		},
-		// 27. Cuddle: brace inside a raw string is left alone
+		// Cuddle: brace inside a raw string is left alone
 		{
 			name     = "cuddle ignores raw string brace",
 			input    = "x := `\n{\n`\nif true\n{\ny := 1\n}\n",
 			expected = "x := `\n{\n`\nif true {\n\ty := 1\n}\n",
 		},
-		// 28. Cuddle: already cuddled input is idempotent
+		// Cuddle: already cuddled input is idempotent
 		{
 			name     = "cuddle idempotent",
 			input    = "main :: proc() {\n\tx := 1\n}\n",
 			expected = "main :: proc() {\n\tx := 1\n}\n",
 		},
-		// 29. Cuddle: else on its own line
+		// Cuddle: else on its own line
 		{
 			name     = "cuddle else brace",
 			input    = "if true {\nx := 1\n} else\n{\ny := 2\n}\n",
 			expected = "if true {\n\tx := 1\n} else {\n\ty := 2\n}\n",
 		},
-		// 30. Collapse else: bare else, Allman style
-		{
-			name     = "collapse bare else",
-			input    = "if a {\nx\n}\nelse\n{\ny\n}\n",
-			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
-		},
-		// 31. Collapse else: else if with condition and brace
-		{
-			name     = "collapse else if",
-			input    = "if a {\nx\n}\nelse if b {\ny\n}\n",
-			expected = "if a {\n\tx\n} else if b {\n\ty\n}\n",
-		},
-		// 32. Collapse else: already inline is idempotent
-		{
-			name     = "collapse else idempotent",
-			input    = "if a {\nx\n} else {\ny\n}\n",
-			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
-		},
-		// 33. Collapse else: intervening blank lines removed
-		{
-			name     = "collapse else skips blank lines",
-			input    = "if a {\nx\n}\n\n\nelse {\ny\n}\n",
-			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
-		},
-		// 34. Collapse else: bail when a comment sits between } and else
-		{
-			name     = "collapse else bails on comment gap",
-			input    = "if a {\nx\n}\n// hmm\nelse {\ny\n}\n",
-			expected = "if a {\n\tx\n}\n// hmm\nelse {\n\ty\n}\n",
-		},
-		// 35. Collapse else: fully Allman if + else
-		{
-			name     = "collapse else full allman",
-			input    = "if a\n{\nx\n}\nelse\n{\ny\n}\n",
-			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
-		},
-		// 36. Collapse else: `else` word boundary, does not eat `elsewhere`
-		{
-			name     = "collapse else word boundary",
-			input    = "main :: proc() {\nelsewhere := 1\n}\n",
-			expected = "main :: proc() {\n\telsewhere := 1\n}\n",
-		},
-		// 37. Collapse else: else when (when blocks stay un-indented)
-		{
-			name     = "collapse else when",
-			input    = "when A {\nx\n}\nelse when B {\ny\n}\n",
-			expected = "when A {\nx\n} else when B {\ny\n}\n",
-		},
-		// 38. Collapse else: `else` inside a raw string is left alone
-		{
-			name     = "collapse else ignores raw string",
-			input    = "x := `\nelse\n`\nif a {\nb\n}\nelse {\nc\n}\n",
-			expected = "x := `\nelse\n`\nif a {\n\tb\n} else {\n\tc\n}\n",
-		},
-		// 39. Bare scope block after an assignment is NOT cuddled
+		// Bare scope block after an assignment is NOT cuddled
 		{
 			name     = "bare scope block not cuddled (assignment)",
 			input    = "main :: proc() {\nx := 1\n{\ny := 2\n}\n}\n",
 			expected = "main :: proc() {\n\tx := 1\n\t{\n\t\ty := 2\n\t}\n}\n",
 		},
-		// 40. Bare scope block after a call is NOT cuddled
+		// Bare scope block after a call is NOT cuddled
 		{
 			name     = "bare scope block not cuddled (call)",
 			input    = "main :: proc() {\nsetup()\n{\nwork()\n}\n}\n",
 			expected = "main :: proc() {\n\tsetup()\n\t{\n\t\twork()\n\t}\n}\n",
 		},
-		// 41. Proc with return type, Allman brace, still cuddled
+		// Proc with return type, Allman brace, still cuddled
 		{
 			name     = "cuddle proc with return type",
 			input    = "add :: proc(a: int, b: int) -> int\n{\nreturn a\n}\n",
 			expected = "add :: proc(a: int, b: int) -> int {\n\treturn a\n}\n",
 		},
-		// 42. #partial switch, Allman brace, still cuddled
+		// #partial switch, Allman brace, still cuddled
 		{
 			name     = "cuddle partial switch",
 			input    = "foo :: proc() {\n#partial switch x\n{\ncase:\n}\n}\n",
 			expected = "foo :: proc() {\n\t#partial switch x {\n\tcase:\n\t}\n}\n",
 		},
-		// 43. Tagged union header (#no_nil) still cuddled
+		// Tagged union header (#no_nil) still cuddled
 		{
 			name     = "cuddle tagged union",
 			input    = "V :: union #no_nil\n{\nint,\nf32,\n}\n",
 			expected = "V :: union #no_nil {\n\tint,\n\tf32,\n}\n",
 		},
-		{
-			name = "basic",
-			input = "main :: proc() {\r\nx := 1\r\n}\r\n",
-			expected = "main :: proc() {\n\tx := 1\n}\n"
-		},
-		// 44. struct with directive still cuddled
+		// struct with directive still cuddled
 		{
 			name     = "cuddle struct with directive",
 			input    = "P :: struct #packed\n{\nx: u8,\n}\n",
 			expected = "P :: struct #packed {\n\tx: u8,\n}\n",
 		},
-		// 45. enum with backing type still cuddled
+		// enum with backing type still cuddled
 		{
 			name     = "cuddle enum with backing type",
 			input    = "E :: enum u8\n{\nA,\n}\n",
 			expected = "E :: enum u8 {\n\tA,\n}\n",
 		},
+	}
+
+	check_format(t, cases)
+}
+
+// else: indentation around `} else {` and collapsing a lone else back onto the closing brace.
+@(test)
+test_else :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// } else { pattern
+		{
+			name     = "close-open pattern",
+			input    = "if true {\nx := 1\n} else {\ny := 2\n}\n",
+			expected = "if true {\n\tx := 1\n} else {\n\ty := 2\n}\n",
+		},
+		// Collapse else: bare else, Allman style
+		{
+			name     = "collapse bare else",
+			input    = "if a {\nx\n}\nelse\n{\ny\n}\n",
+			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
+		},
+		// Collapse else: else if with condition and brace
+		{
+			name     = "collapse else if",
+			input    = "if a {\nx\n}\nelse if b {\ny\n}\n",
+			expected = "if a {\n\tx\n} else if b {\n\ty\n}\n",
+		},
+		// Collapse else: already inline is idempotent
+		{
+			name     = "collapse else idempotent",
+			input    = "if a {\nx\n} else {\ny\n}\n",
+			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
+		},
+		// Collapse else: intervening blank lines removed
+		{
+			name     = "collapse else skips blank lines",
+			input    = "if a {\nx\n}\n\n\nelse {\ny\n}\n",
+			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
+		},
+		// Collapse else: bail when a comment sits between } and else
+		{
+			name     = "collapse else bails on comment gap",
+			input    = "if a {\nx\n}\n// hmm\nelse {\ny\n}\n",
+			expected = "if a {\n\tx\n}\n// hmm\nelse {\n\ty\n}\n",
+		},
+		// Collapse else: fully Allman if + else
+		{
+			name     = "collapse else full allman",
+			input    = "if a\n{\nx\n}\nelse\n{\ny\n}\n",
+			expected = "if a {\n\tx\n} else {\n\ty\n}\n",
+		},
+		// Collapse else: `else` word boundary, does not eat `elsewhere`
+		{
+			name     = "collapse else word boundary",
+			input    = "main :: proc() {\nelsewhere := 1\n}\n",
+			expected = "main :: proc() {\n\telsewhere := 1\n}\n",
+		},
+		// Collapse else: else when (when blocks stay un-indented)
+		{
+			name     = "collapse else when",
+			input    = "when A {\nx\n}\nelse when B {\ny\n}\n",
+			expected = "when A {\nx\n} else when B {\ny\n}\n",
+		},
+		// Collapse else: `else` inside a raw string is left alone
+		{
+			name     = "collapse else ignores raw string",
+			input    = "x := `\nelse\n`\nif a {\nb\n}\nelse {\nc\n}\n",
+			expected = "x := `\nelse\n`\nif a {\n\tb\n} else {\n\tc\n}\n",
+		},
+	}
+
+	check_format(t, cases)
+}
+
+// switch statements: case labels at the switch's level, case bodies one level deeper.
+@(test)
+test_switch :: proc(t: ^testing.T) {
+	cases := []Test_Case{
 		{
 			name = "switch statement",
 			input = `
@@ -530,7 +559,42 @@ lala :: proc() {
 }
 `
 		},
+	}
 
+	check_format(t, cases)
+}
+
+// when blocks: the body of a when is not indented.
+@(test)
+test_when :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		{ // TODO: skip when indentation when u implement it
+			name = "when",
+			input = `
+
+lala :: proc() {
+	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
+
+	when ODIN_DEBUG {
+		lprintln("Tracking Allocations...")
+	}
+
+	apple := "table"
+}
+`,
+			expected = `
+
+lala :: proc() {
+	alloc_err := virtual.arena_init_growing(&temp_arena, mem.Megabyte)
+
+	when ODIN_DEBUG {
+	lprintln("Tracking Allocations...")
+	}
+
+	apple := "table"
+}
+`
+		},
 	}
 
 	check_format(t, cases)
