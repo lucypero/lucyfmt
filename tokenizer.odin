@@ -35,45 +35,35 @@ scan :: proc(t: ^Tokenizer) -> Token {
 		
 		start_pos := t.pos
 		current_char := peek(t)
-
-		// Scanning single character tokens
-		if kind, ok := get_single_char_token(current_char); ok {
+		next_token := classify_next_token(t)
+		
+		switch next_token {
+		case .OpenParens, .CloseParens, .OpenBrace, .CloseBrace, .NewLine:
 			t.pos += 1
-			return Token {kind, t.src[start_pos:t.pos]}
-		}
-
-		// Scanning word
-		if is_whitespace(current_char) {
-			for t.pos < len(t.src) && is_whitespace(peek(t)) do t.pos +=1
-			return Token {.Whitespace, t.src[start_pos:t.pos]}
-		}
-
-		// Scanning single line comment
-		if current_char == '/' && peek_ahead_is(t, 1, '/') {
-			for t.pos < len(t.src) && peek(t) != '\n' do t.pos +=1
-			return Token {.SingleLineComment, t.src[start_pos:t.pos]}
-		}
-
-		// Scanning word
-		if is_letter(current_char) {
+		case .Word:
 			for t.pos < len(t.src) && is_alphanumeric(peek(t)) do t.pos +=1
-			return Token {.Word, t.src[start_pos:t.pos]}
+		case .SingleLineComment:
+			for t.pos < len(t.src) && peek(t) != '\n' do t.pos +=1
+		case .Whitespace:
+			for t.pos < len(t.src) && is_whitespace(peek(t)) do t.pos +=1
+		case .Other:
+			for t.pos < len(t.src) && classify_next_token(t) == .Other do t.pos += 1
+		case .EOF:
 		}
 
-		// Constructing Other token
-		for t.pos < len(t.src) && !starts_token(t) do t.pos += 1
-		return Token {.Other, t.src[start_pos:t.pos]}
+		return {next_token, t.src[start_pos:t.pos]}
 	}
 
 	return Token {.EOF, ""}
 }
 
-starts_token :: proc(t: ^Tokenizer) -> bool {
-	// TODO(lucy): how do we make sure that we're not scanning a comment here? (it has to look ahead?)
+classify_next_token :: proc(t: ^Tokenizer) -> TokenType {
 	character := peek(t)
-	_, is_single_char_token := get_single_char_token(character)
-	is_single_line_comment := character == '/' && peek_ahead_is(t, 1, '/')
-	return is_letter(character) || is_single_char_token || is_whitespace(character) || is_single_line_comment
+	if kind, ok := get_single_char_token(character); ok do return kind
+	if is_whitespace(character) do return .Whitespace
+	if character == '/' && peek_ahead_is(t, 1, '/') do return .SingleLineComment
+	if is_letter(character) do return .Word
+	return .Other
 }
 
 is_alphanumeric :: proc(character: u8) -> bool {
