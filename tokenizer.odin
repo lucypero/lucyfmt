@@ -1,13 +1,13 @@
 package lucyfmt
 
 import "core:strings"
-import "core:fmt"
 
-TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, OpenSquareBracket, CloseSquareBracket, NewLine, EOF, Whitespace, Other, SingleLineComment, MultiLineComment, StringQuote, StringBacktick, Character}
+TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, OpenSquareBracket, CloseSquareBracket, NewLine, EOF, Other, SingleLineComment, MultiLineComment, StringQuote, StringBacktick, Character}
 
 Token :: struct {
 	kind: TokenType,
-	contents: string
+	contents: string,
+	whitespace_before: bool
 }
 
 Tokenizer :: struct {
@@ -38,11 +38,16 @@ scan :: proc(t: ^Tokenizer) -> Token {
 	for {
 		if t.pos >= len(t.src) do break
 		
+		// Detecting Whitespace
+		whitespace_start := t.pos
+		for t.pos < len(t.src) && is_whitespace(peek(t)) do t.pos += 1
+		whitespace_before := t.pos > whitespace_start
+		if t.pos >= len(t.src) do return {.EOF, "", whitespace_before}
+		
+		// Parsing everything else
 		start_pos := t.pos
-		current_char := peek(t)
-		
 		next_token := classify_next_token(t)
-		
+
 		switch next_token {
 		case .OpenParens, .CloseParens, .OpenBrace, .CloseBrace, .NewLine, .OpenSquareBracket, .CloseSquareBracket:
 			t.pos += 1
@@ -54,8 +59,6 @@ scan :: proc(t: ^Tokenizer) -> Token {
 			t.pos += 2
 			for t.pos < len(t.src) && !peek_is(t, "*/") do t.pos += 1
 			t.pos += 2 // Skipping the closing `*/`
-		case .Whitespace:
-			for t.pos < len(t.src) && is_whitespace(peek(t)) do t.pos += 1
 		case .StringQuote:
 			scan_quoted_escaping(t, '"')
 		case .StringBacktick:
@@ -69,10 +72,10 @@ scan :: proc(t: ^Tokenizer) -> Token {
 		case .EOF:
 		}
 
-		return {next_token, t.src[start_pos:t.pos]}
+		return {next_token, t.src[start_pos:t.pos], whitespace_before}
 	}
 
-	return Token {.EOF, ""}
+	return Token {.EOF, "", false}
 }
 
 // Scans quoted strings of text (like "a string" and 'a' character), while escaping anything after a `\`
@@ -92,7 +95,6 @@ scan_quoted_escaping :: proc(t: ^Tokenizer, quote: u8) {
 classify_next_token :: proc(t: ^Tokenizer) -> TokenType {
 	character := peek(t)
 	if kind, ok := get_single_char_token(character); ok do return kind
-	if is_whitespace(character) do return .Whitespace
 	if peek_is(t, "//") do return .SingleLineComment
 	if peek_is(t, "/*") do return .MultiLineComment
 	if is_letter(character) do return .Word

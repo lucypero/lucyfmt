@@ -17,7 +17,7 @@
   },
   {
     "label": "test one thing",
-    "command": "odin test . -debug -define:ODIN_TEST_NAMES=test_basic,test_strings,test_comments,test_parens,test_else -define:ODIN_TEST_LOG_LEVEL=error -vet-shadowing",
+    "command": "odin test . -debug -define:ODIN_TEST_NAMES=test_basic,test_strings,test_comments,test_parens -define:ODIN_TEST_LOG_LEVEL=error -vet-shadowing",
     "shell": {"program": "nu"}
   },
 ]

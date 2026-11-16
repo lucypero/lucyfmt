@@ -49,7 +49,7 @@ test_basic :: proc(t: ^testing.T) {
 		},
 		// CRLF line endings normalized to LF
 		{
-			name = "basic",
+			name = "crlf basic",
 			input = "main :: proc() {\r\nx := 1\r\n}\r\n",
 			expected = "main :: proc() {\n\tx := 1\n}\n"
 		},
@@ -848,6 +848,11 @@ check_format :: proc(t: ^testing.T, cases: []Test_Case) {
 				fmt.sbprintfln(&sb,"%v", line)
 			}
 
+			tokens := tokenize(tc.input)
+			for tok in tokens {
+				fmt.sbprintfln(&sb,"%v", tok)
+			}
+			
 			log.error(strings.to_string(sb))
 		}
 	}
