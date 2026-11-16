@@ -1,7 +1,7 @@
 [
   {
     "label": "test",
-    "command": "odin test . -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_LOG_LEVEL=error",
+    "command": "odin test . -define:ODIN_TEST_THREADS=1 -define:ODIN_TEST_LOG_LEVEL=error -vet-shadowing",
   },
   {
     "label": "test vet",
@@ -13,11 +13,11 @@
   },
   {
     "label": "build test",
-    "command": "odin build . -build-mode:test -debug",
+    "command": "odin build . -build-mode:test -debug -vet-shadowing",
   },
   {
     "label": "test one thing",
-    "command": "odin test . -debug -define:ODIN_TEST_NAMES=test_strings -define:ODIN_TEST_LOG_LEVEL=error",
+    "command": "odin test . -debug -define:ODIN_TEST_NAMES=test_basic,test_strings,test_comments,test_parens,test_else -define:ODIN_TEST_LOG_LEVEL=error -vet-shadowing",
     "shell": {"program": "nu"}
   },
 ]

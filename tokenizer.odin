@@ -3,7 +3,7 @@ package lucyfmt
 import "core:strings"
 import "core:fmt"
 
-TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, NewLine, EOF, Whitespace, Other, SingleLineComment, MultiLineComment, StringQuote, StringBacktick, Character}
+TokenType :: enum { Word, OpenParens, CloseParens, OpenBrace, CloseBrace, OpenSquareBracket, CloseSquareBracket, NewLine, EOF, Whitespace, Other, SingleLineComment, MultiLineComment, StringQuote, StringBacktick, Character}
 
 Token :: struct {
 	kind: TokenType,
@@ -44,7 +44,7 @@ scan :: proc(t: ^Tokenizer) -> Token {
 		next_token := classify_next_token(t)
 		
 		switch next_token {
-		case .OpenParens, .CloseParens, .OpenBrace, .CloseBrace, .NewLine:
+		case .OpenParens, .CloseParens, .OpenBrace, .CloseBrace, .NewLine, .OpenSquareBracket, .CloseSquareBracket:
 			t.pos += 1
 		case .Word:
 			for t.pos < len(t.src) && is_alphanumeric(peek(t)) do t.pos += 1
@@ -122,6 +122,8 @@ get_single_char_token :: proc(character: u8) -> (TokenType, bool) {
 	case ')': return .CloseParens, true
 	case '{': return .OpenBrace, true
 	case '}': return .CloseBrace, true
+	case '[': return .OpenSquareBracket, true
+	case ']': return .CloseSquareBracket, true
 	case '\n': return .NewLine, true
 	case: return .Other, false
 	}

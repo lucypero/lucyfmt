@@ -64,50 +64,6 @@ test_basic :: proc(t: ^testing.T) {
 	check_format(t, cases)
 }
 
-// Unusual input: empty files, missing newlines, unbalanced braces.
-@(test)
-test_edge_cases :: proc(t: ^testing.T) {
-	cases := []Test_Case{
-		// Empty file stays empty
-		{
-			name     = "empty file",
-			input    = "",
-			expected = "",
-		},
-		// File with only blank lines
-		{
-			name     = "only blank lines",
-			input    = "\n\n",
-			expected = "\n\n",
-		},
-		// Missing trailing newline gets one added
-		{
-			name     = "no trailing newline",
-			input    = "main :: proc() {\nx := 1\n}",
-			expected = "main :: proc() {\n\tx := 1\n}\n",
-		},
-		// File with only comments is untouched
-		{
-			name     = "only comments",
-			input    = "// line comment\n/* block\n   comment */\n",
-			expected = "// line comment\n/* block\n   comment */\n",
-		},
-		// Extra closing braces clamp indentation at zero instead of going negative
-		{
-			name     = "too many closing braces",
-			input    = "}\n}\nx := 1\n",
-			expected = "}\n}\nx := 1\n",
-		},
-		// Unclosed brace still indents what follows
-		{
-			name     = "unclosed brace",
-			input    = "main :: proc() {\nx := 1\n",
-			expected = "main :: proc() {\n\tx := 1\n",
-		},
-	}
-
-	check_format(t, cases)
-}
 
 // Strings, raw strings and char literals: braces inside are ignored, contents untouched.
 @(test)
@@ -431,116 +387,6 @@ main :: proc() {
 	check_format(t, cases)
 }
 
-// Brace cuddling: a lone opening brace is pulled onto a recognized block header, and left alone everywhere else.
-@(test)
-test_cuddle :: proc(t: ^testing.T) {
-	cases := []Test_Case{
-		// Cuddle: proc brace pulled onto the signature line
-		{
-			name     = "cuddle proc brace",
-			input    = "main :: proc()\n{\nx := 1\n}\n",
-			expected = "main :: proc() {\n\tx := 1\n}\n",
-		},
-		// Cuddle: struct brace
-		{
-			name     = "cuddle struct brace",
-			input    = "Foo :: struct\n{\nx: int,\n}\n",
-			expected = "Foo :: struct {\n\tx: int,\n}\n",
-		},
-		// Cuddle: control-flow brace (every construct)
-		{
-			name     = "cuddle if brace",
-			input    = "if true\n{\nx := 1\n}\n",
-			expected = "if true {\n\tx := 1\n}\n",
-		},
-		// Cuddle: intervening blank lines are removed
-		{
-			name     = "cuddle skips blank lines",
-			input    = "main :: proc()\n\n\n{\nx := 1\n}\n",
-			expected = "main :: proc() {\n\tx := 1\n}\n",
-		},
-		// Cuddle: split signature, brace onto the lone close paren
-		{
-			name     = "cuddle split signature",
-			input    = "foo :: proc(\na: int,\nb: int,\n)\n{\nx := 1\n}\n",
-			expected = "foo :: proc(\n\ta: int,\n\tb: int,\n) {\n\tx := 1\n}\n",
-		},
-		// Cuddle: bail when a comment sits between definition and brace
-		{
-			name     = "cuddle bails on comment gap",
-			input    = "main :: proc()\n// note\n{\nx := 1\n}\n",
-			expected = "main :: proc()\n// note\n{\n\tx := 1\n}\n",
-		},
-		// Cuddle: trailing comment on the brace line is carried along
-		{
-			name     = "cuddle carries trailing comment",
-			input    = "main :: proc()\n{ // open\nx := 1\n}\n",
-			expected = "main :: proc() { // open\n\tx := 1\n}\n",
-		},
-		// Cuddle: brace inside a raw string is left alone
-		{
-			name     = "cuddle ignores raw string brace",
-			input    = "x := `\n{\n`\nif true\n{\ny := 1\n}\n",
-			expected = "x := `\n{\n`\nif true {\n\ty := 1\n}\n",
-		},
-		// Cuddle: already cuddled input is idempotent
-		{
-			name     = "cuddle idempotent",
-			input    = "main :: proc() {\n\tx := 1\n}\n",
-			expected = "main :: proc() {\n\tx := 1\n}\n",
-		},
-		// Cuddle: else on its own line
-		{
-			name     = "cuddle else brace",
-			input    = "if true {\nx := 1\n} else\n{\ny := 2\n}\n",
-			expected = "if true {\n\tx := 1\n} else {\n\ty := 2\n}\n",
-		},
-		// Bare scope block after an assignment is NOT cuddled
-		{
-			name     = "bare scope block not cuddled (assignment)",
-			input    = "main :: proc() {\nx := 1\n{\ny := 2\n}\n}\n",
-			expected = "main :: proc() {\n\tx := 1\n\t{\n\t\ty := 2\n\t}\n}\n",
-		},
-		// Bare scope block after a call is NOT cuddled
-		{
-			name     = "bare scope block not cuddled (call)",
-			input    = "main :: proc() {\nsetup()\n{\nwork()\n}\n}\n",
-			expected = "main :: proc() {\n\tsetup()\n\t{\n\t\twork()\n\t}\n}\n",
-		},
-		// Proc with return type, Allman brace, still cuddled
-		{
-			name     = "cuddle proc with return type",
-			input    = "add :: proc(a: int, b: int) -> int\n{\nreturn a\n}\n",
-			expected = "add :: proc(a: int, b: int) -> int {\n\treturn a\n}\n",
-		},
-		// #partial switch, Allman brace, still cuddled
-		{
-			name     = "cuddle partial switch",
-			input    = "foo :: proc() {\n#partial switch x\n{\ncase:\n}\n}\n",
-			expected = "foo :: proc() {\n\t#partial switch x {\n\tcase:\n\t}\n}\n",
-		},
-		// Tagged union header (#no_nil) still cuddled
-		{
-			name     = "cuddle tagged union",
-			input    = "V :: union #no_nil\n{\nint,\nf32,\n}\n",
-			expected = "V :: union #no_nil {\n\tint,\n\tf32,\n}\n",
-		},
-		// struct with directive still cuddled
-		{
-			name     = "cuddle struct with directive",
-			input    = "P :: struct #packed\n{\nx: u8,\n}\n",
-			expected = "P :: struct #packed {\n\tx: u8,\n}\n",
-		},
-		// enum with backing type still cuddled
-		{
-			name     = "cuddle enum with backing type",
-			input    = "E :: enum u8\n{\nA,\n}\n",
-			expected = "E :: enum u8 {\n\tA,\n}\n",
-		},
-	}
-
-	check_format(t, cases)
-}
 
 // else: indentation around `} else {` and collapsing a lone else back onto the closing brace.
 @(test)
@@ -790,6 +636,162 @@ main :: proc() {
 			name     = "when inside string",
 			input    = "x := \"when\"\nif true {\ny := 1\n}\n",
 			expected = "x := \"when\"\nif true {\n\ty := 1\n}\n",
+		},
+	}
+
+	check_format(t, cases)
+}
+
+// Unusual input: empty files, missing newlines, unbalanced braces.
+@(test)
+test_edge_cases :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// Empty file stays empty
+		{
+			name     = "empty file",
+			input    = "",
+			expected = "",
+		},
+		// File with only blank lines
+		{
+			name     = "only blank lines",
+			input    = "\n\n",
+			expected = "\n\n",
+		},
+		// Missing trailing newline gets one added
+		{
+			name     = "no trailing newline",
+			input    = "main :: proc() {\nx := 1\n}",
+			expected = "main :: proc() {\n\tx := 1\n}\n",
+		},
+		// File with only comments is untouched
+		{
+			name     = "only comments",
+			input    = "// line comment\n/* block\n   comment */\n",
+			expected = "// line comment\n/* block\n   comment */\n",
+		},
+		// Extra closing braces clamp indentation at zero instead of going negative
+		{
+			name     = "too many closing braces",
+			input    = "}\n}\nx := 1\n",
+			expected = "}\n}\nx := 1\n",
+		},
+		// Unclosed brace still indents what follows
+		{
+			name     = "unclosed brace",
+			input    = "main :: proc() {\nx := 1\n",
+			expected = "main :: proc() {\n\tx := 1\n",
+		},
+	}
+
+	check_format(t, cases)
+}
+
+// Brace cuddling: a lone opening brace is pulled onto a recognized block header, and left alone everywhere else.
+@(test)
+test_cuddle :: proc(t: ^testing.T) {
+	cases := []Test_Case{
+		// Cuddle: proc brace pulled onto the signature line
+		{
+			name     = "cuddle proc brace",
+			input    = "main :: proc()\n{\nx := 1\n}\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n",
+		},
+		// Cuddle: struct brace
+		{
+			name     = "cuddle struct brace",
+			input    = "Foo :: struct\n{\nx: int,\n}\n",
+			expected = "Foo :: struct {\n\tx: int,\n}\n",
+		},
+		// Cuddle: control-flow brace (every construct)
+		{
+			name     = "cuddle if brace",
+			input    = "if true\n{\nx := 1\n}\n",
+			expected = "if true {\n\tx := 1\n}\n",
+		},
+		// Cuddle: intervening blank lines are removed
+		{
+			name     = "cuddle skips blank lines",
+			input    = "main :: proc()\n\n\n{\nx := 1\n}\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n",
+		},
+		// Cuddle: split signature, brace onto the lone close paren
+		{
+			name     = "cuddle split signature",
+			input    = "foo :: proc(\na: int,\nb: int,\n)\n{\nx := 1\n}\n",
+			expected = "foo :: proc(\n\ta: int,\n\tb: int,\n) {\n\tx := 1\n}\n",
+		},
+		// Cuddle: bail when a comment sits between definition and brace
+		{
+			name     = "cuddle bails on comment gap",
+			input    = "main :: proc()\n// note\n{\nx := 1\n}\n",
+			expected = "main :: proc()\n// note\n{\n\tx := 1\n}\n",
+		},
+		// Cuddle: trailing comment on the brace line is carried along
+		{
+			name     = "cuddle carries trailing comment",
+			input    = "main :: proc()\n{ // open\nx := 1\n}\n",
+			expected = "main :: proc() { // open\n\tx := 1\n}\n",
+		},
+		// Cuddle: brace inside a raw string is left alone
+		{
+			name     = "cuddle ignores raw string brace",
+			input    = "x := `\n{\n`\nif true\n{\ny := 1\n}\n",
+			expected = "x := `\n{\n`\nif true {\n\ty := 1\n}\n",
+		},
+		// Cuddle: already cuddled input is idempotent
+		{
+			name     = "cuddle idempotent",
+			input    = "main :: proc() {\n\tx := 1\n}\n",
+			expected = "main :: proc() {\n\tx := 1\n}\n",
+		},
+		// Cuddle: else on its own line
+		{
+			name     = "cuddle else brace",
+			input    = "if true {\nx := 1\n} else\n{\ny := 2\n}\n",
+			expected = "if true {\n\tx := 1\n} else {\n\ty := 2\n}\n",
+		},
+		// Bare scope block after an assignment is NOT cuddled
+		{
+			name     = "bare scope block not cuddled (assignment)",
+			input    = "main :: proc() {\nx := 1\n{\ny := 2\n}\n}\n",
+			expected = "main :: proc() {\n\tx := 1\n\t{\n\t\ty := 2\n\t}\n}\n",
+		},
+		// Bare scope block after a call is NOT cuddled
+		{
+			name     = "bare scope block not cuddled (call)",
+			input    = "main :: proc() {\nsetup()\n{\nwork()\n}\n}\n",
+			expected = "main :: proc() {\n\tsetup()\n\t{\n\t\twork()\n\t}\n}\n",
+		},
+		// Proc with return type, Allman brace, still cuddled
+		{
+			name     = "cuddle proc with return type",
+			input    = "add :: proc(a: int, b: int) -> int\n{\nreturn a\n}\n",
+			expected = "add :: proc(a: int, b: int) -> int {\n\treturn a\n}\n",
+		},
+		// #partial switch, Allman brace, still cuddled
+		{
+			name     = "cuddle partial switch",
+			input    = "foo :: proc() {\n#partial switch x\n{\ncase:\n}\n}\n",
+			expected = "foo :: proc() {\n\t#partial switch x {\n\tcase:\n\t}\n}\n",
+		},
+		// Tagged union header (#no_nil) still cuddled
+		{
+			name     = "cuddle tagged union",
+			input    = "V :: union #no_nil\n{\nint,\nf32,\n}\n",
+			expected = "V :: union #no_nil {\n\tint,\n\tf32,\n}\n",
+		},
+		// struct with directive still cuddled
+		{
+			name     = "cuddle struct with directive",
+			input    = "P :: struct #packed\n{\nx: u8,\n}\n",
+			expected = "P :: struct #packed {\n\tx: u8,\n}\n",
+		},
+		// enum with backing type still cuddled
+		{
+			name     = "cuddle enum with backing type",
+			input    = "E :: enum u8\n{\nA,\n}\n",
+			expected = "E :: enum u8 {\n\tA,\n}\n",
 		},
 	}
 
